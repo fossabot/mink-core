@@ -36,10 +36,6 @@ LT_INIT
 # save libs
 COMMON_LIBS=$LIBS
 
-# antlr3c
-AC_MSG_NOTICE([Enabling bundled antlr3c])
-AC_CONFIG_SUBDIRS([lib/libantlr3c-3.4])
-
 # enable DEBUG mode
 AC_ARG_ENABLE(debug, 
               [AS_HELP_STRING([--enable-debug], [enable DEBUG mode (include debug symbols and disable optimizations) [default=no]])])
@@ -50,12 +46,23 @@ AC_ARG_ENABLE(mdebug,
               [AS_HELP_STRING([--enable-mdebug], [enable MINK DBUEG mode [default=no]])])
 AM_CONDITIONAL(ENABLE_PMDEBUG, test "x$enable_mdebug" = "xyes")
 
+# configd
+AC_ARG_ENABLE(configd, 
+              [AS_HELP_STRING([--enable-configd], [Enable CONFIGD [default=no]])],,
+              [enable_configd=no])
+AM_CONDITIONAL(ENABLE_CONFIGD, test "x$enable_configd" = "xyes")
+if test "x$enable_configd" != "xno"; then
+    AC_DEFINE([ENABLE_CONFIGD], [1], [Enable CONFIGD])
+    # antlr3c
+    AC_MSG_NOTICE([Enabling bundled antlr3c])
+    AC_CONFIG_SUBDIRS([lib/libantlr3c-3.4])
+fi
+
 # gRPC
 AC_ARG_ENABLE(grpc, 
-              [AS_HELP_STRING([--enable-grpc], [Enable GRPC [default=yes]])],,
+              [AS_HELP_STRING([--enable-grpc], [Enable GRPC [default=no]])],,
               [enable_grpc=no])
 AM_CONDITIONAL(ENABLE_GRPC, test "x$enable_grpc" = "xyes")
-# grpc
 if test "x$enable_grpc" != "xno"; then
     PKG_CHECK_MODULES([GRPC], [grpc++], [], [AC_MSG_ERROR([gRPC not found!])])
     AC_DEFINE([ENABLE_GRPC], [1], [Enable GRPC])
@@ -63,9 +70,18 @@ if test "x$enable_grpc" != "xno"; then
     PKG_CHECK_MODULES([PROTOBUF], [protobuf], [], [AC_MSG_ERROR([protobuf not found!])])
 fi
 
+# json rpc
+AC_ARG_ENABLE(jrpc, 
+              [AS_HELP_STRING([--enable-jrpc], [Enable JRPC [default=no]])],,
+              [enable_jrpc=no])
+AM_CONDITIONAL(ENABLE_JRPC, test "x$enable_jrpc" = "xyes")
+if test "x$enable_grpc" != "xno"; then
+    AC_DEFINE([ENABLE_JRPC], [1], [Enable JRPC])
+fi
+
 # sysagent
 AC_ARG_ENABLE(sysagent, 
-              [AS_HELP_STRING([--enable-sysagent], [Enable SYSAGENT [default=yes]])],,
+              [AS_HELP_STRING([--enable-sysagent], [Enable SYSAGENT [default=no]])],,
               [enable_sysagent=no])
 AM_CONDITIONAL(ENABLE_SYSAGENT, test "x$enable_sysagent" = "xyes")
 if test "x$enable_sysagent" != "xno"; then
@@ -78,7 +94,7 @@ fi
 
 # codegen
 AC_ARG_ENABLE(codegen, 
-              [AS_HELP_STRING([--enable-codegen], [Enable mink codegen [default=yes]])],,
+              [AS_HELP_STRING([--enable-codegen], [Enable mink codegen [default=no]])],,
               [enable_codegen=no])
 AM_CONDITIONAL(ENABLE_CODEGEN, test "x$enable_codegen" = "xyes")
 if test "x$enable_codegen" != "xno"; then
@@ -87,7 +103,7 @@ fi
 
 # openwrt
 AC_ARG_ENABLE(openwrt,
-              [AS_HELP_STRING([--enable-openwrt], [Enable OpenWrt support [default=yes]])],,
+              [AS_HELP_STRING([--enable-openwrt], [Enable OpenWrt support [default=no]])],,
               [enable_openwrt=no])
 AM_CONDITIONAL(ENABLE_OPENWRT, test "x$enable_openwrt" = "xyes")
 if test "x$enable_openwrt" != "xno"; then

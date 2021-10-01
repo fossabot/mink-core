@@ -23,7 +23,7 @@
 /**********************************************/
 /* list of command implemented by this plugin */
 /**********************************************/
-constexpr int COMMANDS[] = {
+extern "C" constexpr int COMMANDS[] = {
     gdt_grpc::CMD_GET_PROCESS_LST,
     gdt_grpc::CMD_SHELL_EXEC,
     // end of list marker

@@ -18,11 +18,11 @@ using fs_dir_filter = int (*)(const struct dirent*);
 SysagentdDescriptor::SysagentdDescriptor(const char *_type, const char *_desc)
     : mink::DaemonDescriptor(_type, nullptr, _desc) {
 
+#ifdef ENABLE_CONFIGD
     config = new config::Config();
-
     // set daemon params
     set_param(0, config);
-
+#endif
     // default extra param values
     // --gdt-streams
     dparams.set_int(0, 1000);
@@ -62,9 +62,11 @@ void SysagentdDescriptor::print_help(){
 
 }
 
-void SysagentdDescriptor::init(){
+void SysagentdDescriptor::init() {
     init_gdt();
+#ifdef ENABLE_CONFIGD
     init_cfg(true);
+#endif
     init_plugins(plg_dir.c_str());
 }
 
@@ -154,12 +156,12 @@ void SysagentdDescriptor::process_args(int argc, char **argv){
         exit(EXIT_FAILURE);
     }
 }
-
+#ifdef ENABLE_CONFIGD
 int SysagentdDescriptor::init_cfg(bool _proc_cfg) const {
-
+    // reserved
     return 0;
-
 }
+#endif
 
 static char** fs_readdir(const char* dir, size_t* size, fs_dir_filter filter){
     // null check
@@ -236,7 +238,9 @@ void SysagentdDescriptor::init_gdt(){
                                         dparams.get_pval<int>(3));
 
     // set daemon params
+#ifdef ENABLE_CONFIGD
     set_param(0, config);
+#endif
     set_param(1, gdtsmm);
 
     // set service message handlers
@@ -277,6 +281,8 @@ void SysagentdDescriptor::init_gdt(){
 }
 
 void SysagentdDescriptor::terminate(){
+#ifdef ENABLE_CONFIGD
     delete config;
+#endif
 
 }

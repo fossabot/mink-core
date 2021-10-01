@@ -59,7 +59,7 @@ static void ubus_event_cb(ubus_request *req, int type, blob_attr *msg);
 /**********************************************/
 /* list of command implemented by this plugin */
 /**********************************************/
-constexpr int COMMANDS[] = {
+extern "C" constexpr int COMMANDS[] = {
     gdt_grpc::CMD_UBUS_CALL,
 
     // end of list marker

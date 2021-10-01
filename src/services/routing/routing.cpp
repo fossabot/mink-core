@@ -15,15 +15,14 @@ RoutingdDescriptor::RoutingdDescriptor(const char *_type,
                                        const char *_desc) : mink::DaemonDescriptor(_type, nullptr, _desc),
                                                             gdts(nullptr),
                                                             gdt_stats(nullptr),
-                                                            cfgd_gdtc(nullptr),
-                                                            hbeat(nullptr),
                                                             gdt_port(0) {
+#ifdef ENABLE_CONFIGD
     config = new config::Config();
     memset(cfgd_id, 0, sizeof(cfgd_id));
 
     // set daemon params
     set_param(0, config);
-
+#endif
     // default extra param values
     // --gdt-streams
     extra_params.set_int(0, 1000);
@@ -32,12 +31,14 @@ RoutingdDescriptor::RoutingdDescriptor(const char *_type,
 }
 
 RoutingdDescriptor::~RoutingdDescriptor() {
+#ifdef ENABLE_CONFIGD
     // free routing deamons address strings
     std::all_of(config_daemons.cbegin(), config_daemons.cend(),
                 [](std::string *cd) {
                     delete cd;
                     return true;
                 });
+#endif
 }
 
 void RoutingdDescriptor::process_args(int argc, char **argv) {
@@ -92,6 +93,7 @@ void RoutingdDescriptor::process_args(int argc, char **argv) {
 
             // config daemon address
             case 'c':
+#ifdef ENABLE_CONFIGD
                 // check pattern (ipv4:port)
                 // check if valid
                 if (!std::regex_match(optarg, addr_regex)) {
@@ -102,6 +104,7 @@ void RoutingdDescriptor::process_args(int argc, char **argv) {
                 } else {
                     config_daemons.push_back(new std::string(optarg));
                 }
+#endif
                 break;
 
             // gdt port
@@ -139,7 +142,9 @@ void RoutingdDescriptor::print_help() {
     std::cout << "Options:" << std::endl;
     std::cout << " -?\thelp" << std::endl;
     std::cout << " -i\tunique daemon id" << std::endl;
+#ifdef ENABLE_CONFIGD
     std::cout << " -c\tconfig daemon address (ipv4:port)" << std::endl;
+#endif
     std::cout << " -p\tGDT inbound port" << std::endl;
     std::cout << " -D\tstart in debug mode" << std::endl;
     std::cout << std::endl;
@@ -155,6 +160,7 @@ void RoutingdDescriptor::print_help() {
 void RoutingdDescriptor::init() {
     // init gdt
     init_gdt();
+#ifdef ENABLE_CONFIGD
     // init config
     if (init_config() != 0) {
         // log
@@ -165,7 +171,7 @@ void RoutingdDescriptor::init() {
         // not exiting since routingd is allowed to run without configd
         // connection
     }
-
+#endif
     // accept connections (server mode)
     gdts->start_server(nullptr, gdt_port);
 
@@ -180,6 +186,7 @@ void RoutingdDescriptor::init() {
         gdt_stats->setup_client(gdtc);
 }
 
+#ifdef ENABLE_CONFIGD
 void RoutingdDescriptor::process_config() {
     // create root node string
     std::string root_node_str(DAEMON_CFG_NODE);
@@ -389,6 +396,7 @@ int RoutingdDescriptor::init_config(bool _process_config) {
     // err
     return 5;
 }
+#endif
 
 void RoutingdDescriptor::init_gdt() {
     // start GDT session
@@ -402,8 +410,9 @@ void RoutingdDescriptor::init_gdt() {
     // set routing algorighm
     gdts->set_routing_algo(gdt::GDT_RA_WRR);
     // set gdts pointer
+#ifdef ENABLE_CONFIGD
     wrr_mod_handler.gdts = gdts;
-
+#endif
     // gdt stats
     gdt_stats = new gdt::GDTStatsSession(5, gdts);
     // start stats
@@ -419,7 +428,8 @@ void RoutingdDescriptor::init_gdt() {
     std::smatch regex_groups;
     std::regex addr_regex("(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}):(\\d+)");
 
-    // loop routing daemons
+#ifdef ENABLE_CONFIGD
+    // loop config daemons
     std::all_of(config_daemons.cbegin(), config_daemons.cend(),
                 [this, &regex_groups, &addr_regex](const std::string *cd) {
                     // separate IP and PORT
@@ -433,6 +443,7 @@ void RoutingdDescriptor::init_gdt() {
 
                     return true;
                 });
+#endif
 }
 
 void RoutingdDescriptor::terminate() {
@@ -442,11 +453,13 @@ void RoutingdDescriptor::terminate() {
     gdt_stats->stop();
     // destroy session, free memory
     gdt::destroy_session(gdts);
+#ifdef ENABLE_CONFIGD
     // deallocate config memory
     if (config->get_definition_root() != nullptr)
         delete config->get_definition_root();
     // free config
     delete config;
+#endif
     // gdt stats
     delete gdt_stats;
 }

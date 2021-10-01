@@ -11,9 +11,12 @@
 #ifndef SYSAGENT_H
 #define SYSAGENT_H
 
+#include <config.h>
 #include <atomic.h>
 #include <mink_config.h>
+#ifdef ENABLE_CONFIGD
 #include <config_gdt.h>
+#endif
 #include <daemon.h>
 #include <mink_utils.h>
 #include <mink_plugin.h>
@@ -43,14 +46,27 @@ public:
     void process_args(int argc, char **argv) override;
     void print_help() override;
     void init_gdt();
-    int init_http();
-    int init_cfg(bool _proc_cfg) const;
     void init_plugins(const char *pdir);
     void init();
-    void process_cfg();
     void terminate() override;
+    // configd
+#ifdef ENABLE_CONFIGD
+    int init_cfg(bool _proc_cfg) const;
 
-    // config daemons
+    // config auth user id
+    config::UserId cfgd_uid;
+    // cfgd activity flag
+    mink::Atomic<uint8_t> cfgd_active;
+    // config
+    config::Config *config = nullptr;
+    // current cfg id
+    std::string cfgd_id;
+    // config gdt client
+    gdt::GDTClient *cfgd_gdtc = nullptr;
+    // hbeat
+    gdt::HeartbeatInfo *hbeat = nullptr;
+#endif
+    // routing daemons
     std::vector<std::string *> rtrd_lst;
     // gdt session
     gdt::GDTSession *gdts = nullptr;
@@ -62,18 +78,6 @@ public:
     gdt::ParamIdTypeMap idt_map;
     // GDT stats
     gdt::GDTStatsSession *gdt_stats = nullptr;
-    // cfgd activity flag
-    mink::Atomic<uint8_t> cfgd_active;
-    // config
-    config::Config *config = nullptr;
-    // current cfg id
-    std::string cfgd_id;
-    // config auth user id
-    config::UserId cfgd_uid;
-    // config gdt client
-    gdt::GDTClient *cfgd_gdtc = nullptr;
-    // hbeat
-    gdt::HeartbeatInfo *hbeat = nullptr;
     // srvc msg handler
     EVSrvcMsgRX ev_srvcm_rx;
     // GDT port
