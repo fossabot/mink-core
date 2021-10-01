@@ -12,6 +12,7 @@ ACLOCAL_AMFLAGS = -I m4
 # subdirs
 if ENABLE_CONFIGD
 SUBDIRS = lib/libantlr3c-3.4
+DIST_SUBDIRS = lib/libantlr3c-3.4
 endif
 
 # check for debug mode [--enable-debug]
@@ -95,6 +96,7 @@ endif
 
 if ENABLE_JRPC
 bin_PROGRAMS += jrpcd
+noinst_LTLIBRARIES += libjsonrpc.la
 endif
 
 # code generator
@@ -118,14 +120,17 @@ endif
 # json rpc
 if ENABLE_JRPC
 jrpcd_SOURCES = src/services/json_rpc/jrpc.cpp \
+                src/services/json_rpc/ws_server.cpp \
+                src/services/json_rpc/events.cpp \
                 src/services/json_rpc/jrpcd.cpp
 jrpcd_CPPFLAGS = ${COMMON_INCLUDES}
 jrpcd_LDADD = libdaemon.la \
-              libcfg.la \
-              libminkutils.la \
+              libstats.la \
               libgdt.la \
+              libminkutils.la \
               libgdtutils.la \
               libasn1.la \
+              libjsonrpc.la \
               ${NCURSES_LIBS} \
               -lcap
 endif
@@ -141,7 +146,6 @@ sysagentd_CPPFLAGS = ${COMMON_INCLUDES} \
                      -Isrc/services/sysagent
 sysagentd_LDFLAGS = -export-dynamic
 sysagentd_LDADD = libdaemon.la \
-                  libcfg.la \
                   libgdt.la \
                   libminkutils.la \
                   libgdtutils.la \
@@ -162,7 +166,6 @@ grpcd_CPPFLAGS = ${COMMON_INCLUDES} \
                  -Isrc/services/grpc \
                  ${GRPC_CFLAGS}
 grpcd_LDADD = libdaemon.la \
-              libcfg.la \
               libminkutils.la \
               libgdt.la \
               libgdtutils.la \
@@ -250,6 +253,10 @@ libgdtgrpc_la_SOURCES = src/proto/gdt.grpc.pb.cc \
 libgdtgrpc_la_CPPFLAGS = ${COMMON_INCLUDES} \
                          ${GRPC_CFLAGS}
 endif
+
+# json rpc
+libjsonrpc_la_SOURCES = src/utils/json_rpc.cpp
+libjsonrpc_la_CPPFLAGS = ${COMMON_INCLUDES}
 
 # dynamic (dlopen)
 libminkdynamic_la_SOURCES = src/utils/mink_dynamic.cpp

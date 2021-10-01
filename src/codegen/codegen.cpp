@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <getopt.h>
 #include <inja.hpp>
+#include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
 
