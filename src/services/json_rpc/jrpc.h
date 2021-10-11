@@ -35,6 +35,11 @@ constexpr const char *DAEMON_CFG_NODE = "mink jrpc";
 using rtrd_lst_t = std::vector<std::string>;
 using pmap_t = mink_utils::VariantParamMap<uint32_t>;
 
+// json rpc payload (correlation)
+struct JrpcPayload {
+    mink_utils::Guid guid;
+};
+
 // daemon descriptor definition
 class JsonRpcdDescriptor : public mink::DaemonDescriptor {
 public:
@@ -70,6 +75,11 @@ public:
     pmap_t dparams;
     // ws port
     uint16_t ws_port;
+    // correlation map
+    mink_utils::CorrelationMap<JrpcPayload*> cmap;
+    // grpc payload pool
+    memory::Pool<JrpcPayload, true> cpool;
+
 #ifdef ENABLE_CONFIGD
     int init_cfg(bool _proc_cfg) const;
     void process_cfg();

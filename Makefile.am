@@ -256,7 +256,8 @@ endif
 
 # json rpc
 libjsonrpc_la_SOURCES = src/utils/json_rpc.cpp
-libjsonrpc_la_CPPFLAGS = ${COMMON_INCLUDES}
+libjsonrpc_la_CPPFLAGS = ${COMMON_INCLUDES} \
+                         -Isrc/proto
 
 # dynamic (dlopen)
 libminkdynamic_la_SOURCES = src/utils/mink_dynamic.cpp

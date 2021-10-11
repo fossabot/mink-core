@@ -24,6 +24,17 @@ namespace gdt_grpc {
       CMD_UBUS_CALL = 7,
       CMD_SHELL_EXEC = 8,
     };
+    static const std::map<int, std::string> SysagentCommandMap = {
+      {UNKNWON_COMMAND, "UNKNWON_COMMAND"}, 
+      {CMD_GET_SYSINFO, "CMD_GET_SYSINFO"}, 
+      {CMD_GET_CPUSTATS, "CMD_GET_CPUSTATS"}, 
+      {CMD_GET_MEMINFO, "CMD_GET_MEMINFO"}, 
+      {CMD_GET_UNAME, "CMD_GET_UNAME"}, 
+      {CMD_GET_PROCESS_LST, "CMD_GET_PROCESS_LST"}, 
+      {CMD_GET_FILE_STAT, "CMD_GET_FILE_STAT"}, 
+      {CMD_UBUS_CALL, "CMD_UBUS_CALL"}, 
+      {CMD_SHELL_EXEC, "CMD_SHELL_EXEC"}, 
+    };
     enum ParameterType : int {
       UNKNWON_PARAMETER = 0,
       PT_CPU_USER_PERCENT = 9000,

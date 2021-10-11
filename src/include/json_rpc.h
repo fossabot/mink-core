@@ -25,7 +25,7 @@ namespace json_rpc {
         JsonRpc(const JsonRpc &o) = delete;
         JsonRpc &operator=(const JsonRpc &o) = delete;
 
-        bool verify();
+        void verify();
         static json gen_err(const int code, const std::string &msg);
         static json gen_err(const int code);
 

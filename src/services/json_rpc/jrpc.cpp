@@ -247,6 +247,12 @@ void JsonRpcdDescriptor::init(){
     init_cfg(true);
 #endif
     init_gdt();
+    cpool.init(100);
+    cpool.construct_objects();
+    // pools and timeouts
+    mink::CURRENT_DAEMON->log(mink::LLT_DEBUG,
+                              "Setting correlation pool size to [%d]...",
+                               cpool.get_chunk_count());
     init_wss(ws_port);
 }
 

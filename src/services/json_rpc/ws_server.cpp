@@ -9,8 +9,8 @@
  */
 
 #include <iostream>
-#include <json_rpc.h>
 #include "ws_server.h"
+#include "jrpc.h"
 
 static void fail(beast::error_code ec, char const *what) {
     std::cerr << what << ": " << ec.message() << "\n";
@@ -108,13 +108,15 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
         return;
 
     }else{
+        // create json rpc parser
         json_rpc::JsonRpc jrpc(j);
-        try{
-            std::cout << "verify.." << std::endl;
+
+        // verify if json is a valid json rpc data
+        try {
             jrpc.verify();
 
-        }catch(std::exception &e){
-            std::cout << "ERR" << std::endl;
+        } catch (std::exception &e) {
+            std::cout << e.what() << std::endl;
             ws_rpl = json_rpc::JsonRpc::gen_err(-1).dump();
             sz = net::buffer_copy(buffer_.prepare(ws_rpl.size()),
                                   net::buffer(ws_rpl));
@@ -129,6 +131,43 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
     sz = net::buffer_copy(buffer_.prepare(ws_rpl.size()), net::buffer(ws_rpl));
     send_buff(buffer_, sz);
 }
+
+void WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, const WsSession *ws){
+    auto dd = static_cast<JsonRpcdDescriptor*>(mink::CURRENT_DAEMON);
+    // local routing daemon pointer
+    gdt::GDTClient *gdtc = nullptr;
+    // smsg
+    gdt::ServiceMessage *msg = nullptr;
+    // payload
+    JrpcPayload *pld = nullptr;
+    // randomizer
+    mink_utils::Randomizer rand;
+    // tmp guid
+    uint8_t guid[16];
+
+    // *********************************************
+    // ************ push via GDT *******************
+    // *********************************************
+    // get new router if connection broken
+    if (!(dd->rtrd_gdtc && dd->rtrd_gdtc->is_registered()))
+        dd->rtrd_gdtc = dd->gdts->get_registered_client("routingd");
+    // local routing daemon pointer
+    gdtc = dd->rtrd_gdtc;
+    // null check
+    if (!gdtc) {
+        // TODO stats
+        return;
+    }
+    // allocate new service message
+    msg = dd->gdtsmm->new_smsg();
+    // msg sanity check
+    if (!msg) {
+        // TODO stats
+        return;
+    }
+ 
+}
+
 
 void WsSession::on_write(beast::error_code ec, std::size_t bt){
     boost::ignore_unused(bt);
