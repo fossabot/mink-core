@@ -22,6 +22,7 @@
 #include <memory>
 #include <thread>
 #include <json_rpc.h>
+#include <gdt_utils.h>
 
 // boost beast/asio
 namespace beast = boost::beast;

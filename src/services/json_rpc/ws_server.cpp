@@ -12,6 +12,21 @@
 #include "ws_server.h"
 #include "jrpc.h"
 
+/***********************/
+/* extra user callback */
+/***********************/
+class EVUserCB: public gdt::GDTCallbackMethod {
+public:
+    EVUserCB() = default;
+    EVUserCB(const EVUserCB &o) = delete;
+    EVUserCB &operator=(const EVUserCB &o) = delete;
+    ~EVUserCB() override {std::cout << "==========+FREEING ===============" << std::endl;  }
+
+    // param map for non-variant params
+    std::vector<gdt::ServiceParam*> pmap;
+};
+
+
 static void fail(beast::error_code ec, char const *what) {
     std::cerr << what << ": " << ec.message() << "\n";
 }
@@ -113,8 +128,9 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
 
         // verify if json is a valid json rpc data
         try {
-            jrpc.verify();
+            jrpc.verify(true);
 
+            std::cout << "ID: " << jrpc.get_id() << std::endl;
         } catch (std::exception &e) {
             std::cout << e.what() << std::endl;
             ws_rpl = json_rpc::JsonRpc::gen_err(-1).dump();
@@ -125,7 +141,6 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
         }
     }
     
-
     // no error
     ws_rpl = json_rpc::JsonRpc::gen_err(999).dump();
     sz = net::buffer_copy(buffer_.prepare(ws_rpl.size()), net::buffer(ws_rpl));
@@ -165,7 +180,18 @@ void WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, const WsSession *ws){
         // TODO stats
         return;
     }
- 
+
+    // header and body
+    //const gdt_grpc::Header &hdr = req.header();
+    //const gdt_grpc::Body &bdy = req.body();
+
+    // service id
+    msg->set_service_id(47);
+
+    // extra params
+    EVUserCB *ev_usr_cb = nullptr;
+    std::vector<gdt::ServiceParam*> *pmap = nullptr;
+
 }
 
 
