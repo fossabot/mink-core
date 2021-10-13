@@ -11,6 +11,7 @@
 #ifndef MINK_JSON_RPC_HNDLR_H
 #define MINK_JSON_RPC_HNDLR_H 
 
+#include <functional>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::basic_json<nlohmann::ordered_map>;
@@ -26,11 +27,15 @@ namespace json_rpc {
         JsonRpc &operator=(const JsonRpc &o) = delete;
 
         void verify(bool check_mink = false);
-        const json &get_method() const; 
+        const std::string &get_method() const; 
+        int get_param_id(const std::string &p) const;
+        void process_params(const std::function<bool(int id, const std::string &)> &f) const;
+        int get_method_id() const;
         const json &get_params() const; 
         int get_id() const; 
         int get_mink_service_id() const; 
         const std::string &get_mink_dtype() const; 
+        const std::string &get_mink_did() const; 
         
         static json gen_err(const int code, const std::string &msg);
         static json gen_err(const int code);

@@ -38,6 +38,7 @@ using pmap_t = mink_utils::VariantParamMap<uint32_t>;
 // json rpc payload (correlation)
 struct JrpcPayload {
     mink_utils::Guid guid;
+    std::shared_ptr<WsSession> cdata;
 };
 
 // daemon descriptor definition

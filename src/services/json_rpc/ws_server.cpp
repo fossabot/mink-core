@@ -129,8 +129,12 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
         // verify if json is a valid json rpc data
         try {
             jrpc.verify(true);
+            // check if method is supported
+            if(jrpc.get_method_id() > -1){
+                // push via gdt
+                gdt_push(jrpc, shared_from_this());
+            }
 
-            std::cout << "ID: " << jrpc.get_id() << std::endl;
         } catch (std::exception &e) {
             std::cout << e.what() << std::endl;
             ws_rpl = json_rpc::JsonRpc::gen_err(-1).dump();
@@ -147,7 +151,7 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
     send_buff(buffer_, sz);
 }
 
-void WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, const WsSession *ws){
+bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSession> ws){
     auto dd = static_cast<JsonRpcdDescriptor*>(mink::CURRENT_DAEMON);
     // local routing daemon pointer
     gdt::GDTClient *gdtc = nullptr;
@@ -171,14 +175,14 @@ void WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, const WsSession *ws){
     // null check
     if (!gdtc) {
         // TODO stats
-        return;
+        return false;
     }
     // allocate new service message
     msg = dd->gdtsmm->new_smsg();
     // msg sanity check
     if (!msg) {
         // TODO stats
-        return;
+        return false;
     }
 
     // header and body
@@ -191,6 +195,111 @@ void WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, const WsSession *ws){
     // extra params
     EVUserCB *ev_usr_cb = nullptr;
     std::vector<gdt::ServiceParam*> *pmap = nullptr;
+
+    // mandatory params
+    // ================
+    // - mink service id
+    // - mink command id
+    // - mink destination type
+
+    // optional params
+    // ===============
+    // - mink destination id
+
+    // service id
+    msg->set_service_id(jrpc.get_mink_service_id());
+
+    // command id (method from json rpc)
+    msg->vpmap.erase_param(asn1::ParameterType::_pt_mink_command_id);
+    msg->vpmap.set_int(asn1::ParameterType::_pt_mink_command_id,
+                       jrpc.get_method_id());
+    
+
+    // process params
+    jrpc.process_params([&ev_usr_cb, &pmap, msg, &jrpc](int id, const std::string &s) {
+        std::cout << "Param: " << s << std::endl;
+        if(s.size() > msg->vpmap.get_max()) {
+            gdt::ServiceParam *sp = msg->get_smsg_manager()
+                                       ->get_param_factory()
+                                       ->new_param(gdt::SPT_OCTETS);
+            if (sp) {
+                // creat only once
+                if (!ev_usr_cb) {
+                    auto ev_usr_cb = new EVUserCB();
+                    msg->params.set_param(3, ev_usr_cb);
+                    pmap = &ev_usr_cb->pmap;
+                }
+                sp->set_data(s.c_str(), s.size());
+                sp->set_id(id);
+                sp->set_index(0);
+                sp->set_extra_type(0);
+                pmap->push_back(sp);
+            }
+
+        }else{
+            // set gdt data 
+            msg->vpmap.set_cstr(id, s.c_str());
+        }
+        
+        return true;
+    });
+
+    // set source daemon type
+    msg->vpmap.set_cstr(asn1::ParameterType::_pt_mink_daemon_type,
+                        dd->get_daemon_type());
+    // set source daemon id
+    msg->vpmap.set_cstr(asn1::ParameterType::_pt_mink_daemon_id,
+                        dd->get_daemon_id());
+
+    // allocate payload object for correlation (grpc <-> gdt)
+    pld = dd->cpool.allocate_constructed();
+    if (!pld) {
+        // TODO stats
+        dd->gdtsmm->free_smsg(msg);
+        return false;
+    }
+    
+    // set correlation payload data
+    pld->cdata = ws;
+    // generate guid
+    rand.generate(guid, 16);
+    pld->guid.set(guid);
+    msg->vpmap.set_octets(asn1::ParameterType::_pt_mink_guid, 
+                          pld->guid.data(), 
+                          16);
+ 
+    // sync vpmap
+    if (dd->gdtsmm->vpmap_sparam_sync(msg, pmap) != 0) {
+        // TODO stats
+        dd->gdtsmm->free_smsg(msg);
+        return false;
+    }
+
+    // destination id
+    const std::string dest_id = jrpc.get_mink_did();
+    std::cout << "DESTINATIN ID: " << dest_id << std::endl;
+
+    // send service message
+    int r = dd->gdtsmm->send(msg, 
+                             gdtc, 
+                             jrpc.get_mink_dtype().c_str(), 
+                             (!dest_id.empty() ? dest_id.c_str() : nullptr),
+                             true, 
+                             &dd->ev_srvcm_tx);
+    if (r) {
+        // TODO stats
+        dd->gdtsmm->free_smsg(msg);
+        return false;
+    }
+
+    // save to correlarion map
+    dd->cmap.lock();
+    dd->cmap.set(pld->guid, pld);
+    dd->cmap.unlock();
+
+    return true;
+
+
 
 }
 

@@ -33,11 +33,62 @@ json json_rpc::JsonRpc::gen_err(const int code){
 
 }
 
-const json &json_rpc::JsonRpc::get_method() const {
+int json_rpc::JsonRpc::get_method_id() const {
+    const std::string &m = get_method();
+    auto it = std::find_if(gdt_grpc::SysagentCommandMap.cbegin(),
+                           gdt_grpc::SysagentCommandMap.cend(),
+                           [&m](const std::pair<int, std::string> &p) { 
+                               return p.second == m; 
+                           });
+    if (it == gdt_grpc::SysagentCommandMap.cend())
+        return -1;
+    else
+        return it->first;
+}
+
+int json_rpc::JsonRpc::get_param_id(const std::string &p) const {
+    auto it = std::find_if(gdt_grpc::SysagentParamMap.cbegin(),
+                           gdt_grpc::SysagentParamMap.cend(),
+                           [&p](const std::pair<int, std::string> &pr) { 
+                               return pr.second == p;
+                           });
+    if (it == gdt_grpc::SysagentParamMap.cend())
+        return -1;
+    else
+        return it->first;
+
+}
+
+void json_rpc::JsonRpc::process_params(const std::function<bool(int id, const std::string &)> &f) const {
     if (!verified_)
         throw std::invalid_argument("unverified");
 
-    return data_.at(METHOD_);
+    // iterate
+    json p = data_.at(PARAMS_);
+
+    for(auto it = p.begin(); it != p.end(); ++it){
+        // check for param id
+        int id = get_param_id(it.key());
+        if (id == -1)
+            continue;
+
+        // convert to string
+        if (!(*it).is_string()) {
+            // only non fractional
+            if ((*it).is_number_unsigned() || (*it).is_number_integer()) {
+                std::string s = std::to_string((*it).get_ref<const json::number_integer_t &>());
+                f(id, s);
+            }
+        } else
+            f(id, (*it).get_ref<const json::string_t &>());
+    }
+}
+
+const std::string &json_rpc::JsonRpc::get_method() const {
+    if (!verified_)
+        throw std::invalid_argument("unverified");
+
+    return data_.at(METHOD_).get_ref<const json::string_t&>();
 }
 
 const json &json_rpc::JsonRpc::get_params() const {
@@ -64,16 +115,26 @@ int json_rpc::JsonRpc::get_mink_service_id() const {
         throw std::invalid_argument("MINK: unverified");
 
     // return id
-    return (data_.at(PARAMS_).get<int>());
+    const auto &it = data_[PARAMS_].find(MINK_SERVICE_ID_);
+    return it.value().get<json::number_unsigned_t>();
 }
 
 const std::string &json_rpc::JsonRpc::get_mink_dtype() const {
     if (!mink_verified_)
         throw std::invalid_argument("MINK: unverified");
 
-    auto it = data_[PARAMS_].find(MINK_DTYPE_);
-    return it.value();
+    const auto &it = data_[PARAMS_].find(MINK_DTYPE_);
+    return it.value().get_ref<const json::string_t&>();
 }
+
+const std::string &json_rpc::JsonRpc::get_mink_did() const {
+    if (!mink_verified_)
+        throw std::invalid_argument("MINK: unverified");
+
+    const auto &it = data_[PARAMS_].find(MINK_DID_);
+    return it.value().get_ref<const json::string_t&>();
+}
+
 
 int json_rpc::JsonRpc::get_id() const {
     if (!verified_)
