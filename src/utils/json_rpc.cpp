@@ -127,12 +127,15 @@ const std::string &json_rpc::JsonRpc::get_mink_dtype() const {
     return it.value().get_ref<const json::string_t&>();
 }
 
-const std::string &json_rpc::JsonRpc::get_mink_did() const {
+const std::string *json_rpc::JsonRpc::get_mink_did() const {
     if (!mink_verified_)
         throw std::invalid_argument("MINK: unverified");
 
     const auto &it = data_[PARAMS_].find(MINK_DID_);
-    return it.value().get_ref<const json::string_t&>();
+    if (it == data_[PARAMS_].end())
+        return nullptr;
+    else
+        return (*it).get_ptr<const json::string_t *const>();
 }
 
 
@@ -174,8 +177,6 @@ void json_rpc::JsonRpc::verify(bool check_mink){
     } catch (std::invalid_argument &e) {
         throw;
     }
-    // rpc verified
-    verified_ = true;
 
     // mink mandatory params
     // params cannot be an array
@@ -207,7 +208,11 @@ void json_rpc::JsonRpc::verify(bool check_mink){
         has_mink_dtype_ = true;
         has_mink_did_ = true;
         mink_verified_ = true;
-    }
+        verified_ = true;
+
+    // rpc verified
+    } else
+        verified_ = true;
 
     std::cout << data_.dump(4) << std::endl;
 }

@@ -276,14 +276,13 @@ bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSessio
     }
 
     // destination id
-    const std::string dest_id = jrpc.get_mink_did();
-    std::cout << "DESTINATIN ID: " << dest_id << std::endl;
+    const std::string *dest_id = jrpc.get_mink_did();
 
     // send service message
     int r = dd->gdtsmm->send(msg, 
                              gdtc, 
                              jrpc.get_mink_dtype().c_str(), 
-                             (!dest_id.empty() ? dest_id.c_str() : nullptr),
+                             (dest_id != nullptr ? dest_id->c_str() : nullptr),
                              true, 
                              &dd->ev_srvcm_tx);
     if (r) {

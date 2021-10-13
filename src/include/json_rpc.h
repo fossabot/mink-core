@@ -35,7 +35,7 @@ namespace json_rpc {
         int get_id() const; 
         int get_mink_service_id() const; 
         const std::string &get_mink_dtype() const; 
-        const std::string &get_mink_did() const; 
+        const std::string *get_mink_did() const; 
         
         static json gen_err(const int code, const std::string &msg);
         static json gen_err(const int code);
