@@ -30,8 +30,15 @@ json json_rpc::JsonRpc::gen_err(const int code){
     j[JSON_RPC_] = const_cast<char*>(VERSION_);
     j[ERROR_][CODE_] = code;
     return j;
-
 }
+
+json json_rpc::JsonRpc::gen_response(int id){
+    json j;
+    j[JSON_RPC_] = const_cast<char*>(VERSION_);
+    j[ID_] = id;
+    return j;
+}
+
 
 int json_rpc::JsonRpc::get_method_id() const {
     const std::string &m = get_method();

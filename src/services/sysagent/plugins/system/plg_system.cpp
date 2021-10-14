@@ -30,6 +30,20 @@ extern "C" constexpr int COMMANDS[] = {
     -1
 };
 
+/***********************/
+/* extra user callback */
+/***********************/
+class EVUserCB: public gdt::GDTCallbackMethod {
+public:
+    EVUserCB() = default;
+    EVUserCB(const EVUserCB &o) = delete;
+    EVUserCB &operator=(const EVUserCB &o) = delete;
+
+    // param map for non-variant params
+    std::vector<gdt::ServiceParam*> pmap;
+};
+
+
 
 /****************/
 /* init handler */
@@ -87,9 +101,20 @@ static void impl_shell_exec(gdt::ServiceMessage *smsg){
     while (fgets(buff.data(), buff.size(), pipe.get()) != nullptr) {
         res += buff.data();
     }
-   
-    // send shell output 
-    smsg->vpset(PT_SHELL_STDOUT, res);
+
+    auto cb = new EVUserCB();
+    gdt::ServiceParam *sp = smsg->get_smsg_manager()
+                                ->get_param_factory()
+                                ->new_param(gdt::SPT_OCTETS);
+    if(sp){
+        sp->set_data(res.c_str(), res.size());
+        sp->set_id(PT_SHELL_STDOUT);
+        sp->set_extra_type(0);
+        cb->pmap.push_back(sp);
+    }
+    smsg->vpmap.set_pointer(0, cb);
+    smsg->vpmap.set_pointer(1, &cb->pmap);
+
 }
 
 /*******************/

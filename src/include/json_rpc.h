@@ -37,8 +37,10 @@ namespace json_rpc {
         const std::string &get_mink_dtype() const; 
         const std::string *get_mink_did() const; 
         
+        // static methods
         static json gen_err(const int code, const std::string &msg);
         static json gen_err(const int code);
+        static json gen_response(int id);
 
         // string constants
         static constexpr const char *JSON_RPC_          = "jsonrpc";

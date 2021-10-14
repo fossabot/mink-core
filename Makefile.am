@@ -123,7 +123,8 @@ jrpcd_SOURCES = src/services/json_rpc/jrpc.cpp \
                 src/services/json_rpc/ws_server.cpp \
                 src/services/json_rpc/events.cpp \
                 src/services/json_rpc/jrpcd.cpp
-jrpcd_CPPFLAGS = ${COMMON_INCLUDES}
+jrpcd_CPPFLAGS = ${COMMON_INCLUDES} \
+                 -Isrc/proto
 jrpcd_LDADD = libdaemon.la \
               libstats.la \
               libgdt.la \

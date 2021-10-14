@@ -39,6 +39,7 @@ using pmap_t = mink_utils::VariantParamMap<uint32_t>;
 struct JrpcPayload {
     mink_utils::Guid guid;
     std::shared_ptr<WsSession> cdata;
+    int id;
 };
 
 // daemon descriptor definition
@@ -77,9 +78,9 @@ public:
     // ws port
     uint16_t ws_port;
     // correlation map
-    mink_utils::CorrelationMap<JrpcPayload*> cmap;
+    mink_utils::CorrelationMap<JrpcPayload> cmap;
     // grpc payload pool
-    memory::Pool<JrpcPayload, true> cpool;
+    //memory::Pool<JrpcPayload, true> cpool;
 
 #ifdef ENABLE_CONFIGD
     int init_cfg(bool _proc_cfg) const;

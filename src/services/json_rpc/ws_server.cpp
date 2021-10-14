@@ -141,14 +141,14 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
             sz = net::buffer_copy(buffer_.prepare(ws_rpl.size()),
                                   net::buffer(ws_rpl));
             send_buff(buffer_, sz);
-            return;
+            //return;
         }
     }
     
     // no error
-    ws_rpl = json_rpc::JsonRpc::gen_err(999).dump();
-    sz = net::buffer_copy(buffer_.prepare(ws_rpl.size()), net::buffer(ws_rpl));
-    send_buff(buffer_, sz);
+    //ws_rpl = json_rpc::JsonRpc::gen_err(999).dump();
+    //sz = net::buffer_copy(buffer_.prepare(ws_rpl.size()), net::buffer(ws_rpl));
+    //send_buff(buffer_, sz);
 }
 
 bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSession> ws){
@@ -158,7 +158,7 @@ bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSessio
     // smsg
     gdt::ServiceMessage *msg = nullptr;
     // payload
-    JrpcPayload *pld = nullptr;
+    //JrpcPayload *pld = nullptr;
     // randomizer
     mink_utils::Randomizer rand;
     // tmp guid
@@ -252,20 +252,21 @@ bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSessio
                         dd->get_daemon_id());
 
     // allocate payload object for correlation (grpc <-> gdt)
-    pld = dd->cpool.allocate_constructed();
-    if (!pld) {
-        // TODO stats
-        dd->gdtsmm->free_smsg(msg);
-        return false;
-    }
+    JrpcPayload pld;//dd->cpool.allocate_constructed();
+//    if (!pld) {
+//        // TODO stats
+//        dd->gdtsmm->free_smsg(msg);
+//        return false;
+//    }
     
     // set correlation payload data
-    pld->cdata = ws;
+    pld.cdata = ws;
+    pld.id = jrpc.get_id();
     // generate guid
     rand.generate(guid, 16);
-    pld->guid.set(guid);
+    pld.guid.set(guid);
     msg->vpmap.set_octets(asn1::ParameterType::_pt_mink_guid, 
-                          pld->guid.data(), 
+                          pld.guid.data(), 
                           16);
  
     // sync vpmap
@@ -293,15 +294,19 @@ bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSessio
 
     // save to correlarion map
     dd->cmap.lock();
-    dd->cmap.set(pld->guid, pld);
+    dd->cmap.set(pld.guid, pld);
     dd->cmap.unlock();
 
     return true;
-
-
-
 }
 
+beast::flat_buffer &WsSession::get_buffer(){
+    return buffer_;
+}
+
+websocket::stream<beast::tcp_stream> &WsSession::get_tcp_stream(){
+    return ws_;
+}
 
 void WsSession::on_write(beast::error_code ec, std::size_t bt){
     boost::ignore_unused(bt);
