@@ -47,6 +47,7 @@ namespace json_rpc {
         static constexpr const char *VERSION_           = "2.0";
         static constexpr const char *METHOD_            = "method";
         static constexpr const char *PARAMS_            = "params";
+        static constexpr const char *RESULT_            = "result";
         static constexpr const char *ID_                = "id";
         static constexpr const char *ERROR_             = "error";
         static constexpr const char *CODE_              = "code";

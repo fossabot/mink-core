@@ -111,6 +111,8 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
     }
     // session pointer
     std::shared_ptr<WsSession> ws = pld->cdata;
+    // generate empty json rpc reply
+    auto j = json_rpc::JsonRpc::gen_response(pld->id);
     // update ts
     dd->cmap.update_ts(guid);
     dd->cmap.remove(guid);
@@ -119,11 +121,9 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
 
 
     std::cout << "GUIDD correlated!!!" << std::endl;
-
-    // generate empty json rpc reply
-    auto j = json_rpc::JsonRpc::gen_response(pld->id);
-    j[json_rpc::JsonRpc::PARAMS_] = json::array();
-    auto &j_params = j[json_rpc::JsonRpc::PARAMS_];
+    // create result object
+    j[json_rpc::JsonRpc::RESULT_] = json::array();
+    auto &j_params = j.at(json_rpc::JsonRpc::RESULT_);
 
     // loop GDT params
     mink_utils::PooledVPMap<uint32_t>::it_t it = smsg->vpmap.get_begin();

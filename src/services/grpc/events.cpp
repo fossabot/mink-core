@@ -109,6 +109,9 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
         dd->cmap.unlock();
         return;
     }
+
+    // call data pointer
+    RPCBase *c = (*pld)->cdata;
     // update ts
     dd->cmap.update_ts(guid);
     dd->cmap.remove(guid);
@@ -118,8 +121,6 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
 
     std::cout << "GUIDD correlated!!!" << std::endl;
 
-    // call data pointer
-    RPCBase *c = (*pld)->cdata;
     // header
     gdt_grpc::Header *hdr = c->reply_.mutable_header();
     gdt_grpc::Body *bdy = c->reply_.mutable_body();
