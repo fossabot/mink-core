@@ -120,49 +120,6 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
 
     std::cout << "GUIDD correlated!!!" << std::endl;
 
-/*
-    // call data pointer
-    RPCBase *c = (*pld)->cdata;
-    // header
-    gdt_grpc::Header *hdr = c->reply_.mutable_header();
-    gdt_grpc::Body *bdy = c->reply_.mutable_body();
-    // set header
-    hdr->mutable_source()->set_id(static_cast<char*>(*vp_src_id));
-    hdr->mutable_source()->set_type(static_cast<char*>(*vp_src_type));
-    
-    // set params
-    mink_utils::PooledVPMap<uint32_t>::it_t it = smsg->vpmap.get_begin();
-    // loop param map
-    for(; it != smsg->vpmap.get_end(); it++){
-        // pointer type is used for long params
-        if(it->second.get_type() == mink_utils::DPT_POINTER){
-            auto data = static_cast<data_vec_t *>((void *)it->second);
-            std::string s(reinterpret_cast<char *>(data->data()), data->size());
-            // new grpc param
-            gdt_grpc::Body::Param *p = bdy->add_params();
-            p->set_id(it->first.key);
-            p->set_index(it->first.index);
-            p->set_value(s);
-            delete data;
-            continue;
-        }
-        // skip non-string params
-        if(it->second.get_type() != mink_utils::DPT_STRING) continue;
-        // new grpc param
-        gdt_grpc::Body::Param *p = bdy->add_params();
-        p->set_id(it->first.key);
-        p->set_index(it->first.index);
-        p->set_value(static_cast<char*>(it->second));
-
-        std::cout << it->first.key << " - " << (char*)it->second << std::endl;
-
-    }
-    
-    // send grpc reply
-    c->status_ = RPCBase::FINISH;
-    c->responder_.Finish(c->reply_, grpc::Status::OK, c);
-*/
-
     // generate empty json rpc reply
     auto j = json_rpc::JsonRpc::gen_response(pld->id);
     j[json_rpc::JsonRpc::PARAMS_] = json::array();
@@ -175,18 +132,24 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
         // param name from ID
         auto itt = gdt_grpc::SysagentParamMap.find(it->first.key);
         const std::string pname = (itt != gdt_grpc::SysagentParamMap.cend() ? itt->second : "n/a");
-        std::cout << "PNAME: " << pname << " -> " << it->first.key << "." << it->first.fragment << std::endl;
 
         // pointer type is used for long params
         if(it->second.get_type() == mink_utils::DPT_POINTER){
             auto data = static_cast<data_vec_t *>((void *)it->second);
-            std::string s(reinterpret_cast<char *>(data->data()), data->size());
-            // new json object
-            auto o = json::object();
-            o[pname] = s;
-            o["idx"] = it->first.index;
-            // new json rpc param object
-            j_params.push_back(o);
+            try {
+                std::string s(reinterpret_cast<char *>(data->data()),
+                              data->size());
+                // new json object
+                auto o = json::object();
+                o[pname] = s;
+                o["idx"] = it->first.index;
+                // new json rpc param object
+                j_params.push_back(o);
+
+            } catch (std::exception &e) {
+                std::cout << e.what() << std::endl;
+
+            }
             // cleanup
             delete data;
             continue;
@@ -200,11 +163,12 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
         // new json rpc param object
         j_params.push_back(o);
     }
-    // send json rpc reply
+    // create json rpc reply
     std::string ws_rpl = j.dump();
     beast::flat_buffer &b = ws->get_buffer();
     std::size_t sz = net::buffer_copy(b.prepare(ws_rpl.size()), net::buffer(ws_rpl));
     
+    // send json rpc reply
     b.commit(sz);
     ws->get_tcp_stream().async_write(b.data(), beast::bind_front_handler(&WsSession::on_write, ws)); 
 }
@@ -222,6 +186,7 @@ void EVParamStreamLast::run(gdt::GDTCallbackArgs *args){
                  sparam->get_data() + sparam->get_data_size());
     smsg->vpmap.set_pointer(sparam->get_id(), data, sparam->get_index());
     smsg->params.remove_param(2);
+
 }
 
 void EVParamStreamNext::run(gdt::GDTCallbackArgs *args){

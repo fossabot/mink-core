@@ -41,6 +41,7 @@ public:
 
     // param map for non-variant params
     std::vector<gdt::ServiceParam*> pmap;
+    std::string buff;
 };
 
 
@@ -88,8 +89,8 @@ static void impl_shell_exec(gdt::ServiceMessage *smsg){
     if(!vp_cmd) return;
 
     // buffers, and commands
+    auto cb = new EVUserCB();
     std::array<char, 128> buff;
-    std::string res;
     std::string cmd(static_cast<char*>(*vp_cmd));
     // merge stdout and stderr
     cmd += " 2>&1";
@@ -99,15 +100,14 @@ static void impl_shell_exec(gdt::ServiceMessage *smsg){
 
     // output
     while (fgets(buff.data(), buff.size(), pipe.get()) != nullptr) {
-        res += buff.data();
+        cb->buff += buff.data();
     }
 
-    auto cb = new EVUserCB();
     gdt::ServiceParam *sp = smsg->get_smsg_manager()
                                 ->get_param_factory()
                                 ->new_param(gdt::SPT_OCTETS);
     if(sp){
-        sp->set_data(res.c_str(), res.size());
+        sp->set_data(cb->buff.data(), cb->buff.size() - 1);
         sp->set_id(PT_SHELL_STDOUT);
         sp->set_extra_type(0);
         cb->pmap.push_back(sp);
