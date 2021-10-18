@@ -92,6 +92,16 @@ if test "x$enable_sysagent" != "xno"; then
                  [AC_MSG_ERROR([procps library not found!])])
 fi
 
+# gdt trapc
+AC_ARG_ENABLE(gdttrapc, 
+              [AS_HELP_STRING([--enable-gdttrapc], [Enable GDTTRAPC [default=no]])],,
+              [enable_gdttrapc=no])
+AM_CONDITIONAL(ENABLE_GDTTRAPC, test "x$enable_gdttrapc" = "xyes")
+if test "x$enable_gdttrapc" != "xno"; then
+    AC_DEFINE([ENABLE_GDTTRAPC], [1], [Enable mink gdttrapc])
+fi
+
+
 # codegen
 AC_ARG_ENABLE(codegen, 
               [AS_HELP_STRING([--enable-codegen], [Enable mink codegen [default=no]])],,

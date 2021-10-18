@@ -13,28 +13,6 @@
 
 namespace gdt_grpc {
     
-    enum SysagentCommand : int {
-      UNKNWON_COMMAND = 0,
-      CMD_GET_SYSINFO = 1,
-      CMD_GET_CPUSTATS = 2,
-      CMD_GET_MEMINFO = 3,
-      CMD_GET_UNAME = 4,
-      CMD_GET_PROCESS_LST = 5,
-      CMD_GET_FILE_STAT = 6,
-      CMD_UBUS_CALL = 7,
-      CMD_SHELL_EXEC = 8,
-    };
-    static const std::map<int, std::string> SysagentCommandMap = {
-      {UNKNWON_COMMAND, "UNKNWON_COMMAND"}, 
-      {CMD_GET_SYSINFO, "CMD_GET_SYSINFO"}, 
-      {CMD_GET_CPUSTATS, "CMD_GET_CPUSTATS"}, 
-      {CMD_GET_MEMINFO, "CMD_GET_MEMINFO"}, 
-      {CMD_GET_UNAME, "CMD_GET_UNAME"}, 
-      {CMD_GET_PROCESS_LST, "CMD_GET_PROCESS_LST"}, 
-      {CMD_GET_FILE_STAT, "CMD_GET_FILE_STAT"}, 
-      {CMD_UBUS_CALL, "CMD_UBUS_CALL"}, 
-      {CMD_SHELL_EXEC, "CMD_SHELL_EXEC"}, 
-    };
     enum ParameterType : int {
       UNKNWON_PARAMETER = 0,
       PT_CPU_USER_PERCENT = 9000,
@@ -74,6 +52,68 @@ namespace gdt_grpc {
       PT_SHELL_STDOUT = 9034,
       PT_SHELL_STDERR = 9035,
       PT_SHELL_EXIT_CODE = 9036,
+    };
+    static const std::map<int, std::string> SysagentParamMap = {
+      {UNKNWON_PARAMETER, "UNKNWON_PARAMETER"}, 
+      {PT_CPU_USER_PERCENT, "PT_CPU_USER_PERCENT"}, 
+      {PT_CPU_NICE_PERCENT, "PT_CPU_NICE_PERCENT"}, 
+      {PT_CPU_SYSTEM_PERCENT, "PT_CPU_SYSTEM_PERCENT"}, 
+      {PT_SI_LOAD_AVG_1_MIN, "PT_SI_LOAD_AVG_1_MIN"}, 
+      {PT_SI_LOAD_AVG_5_MIN, "PT_SI_LOAD_AVG_5_MIN"}, 
+      {PT_SI_LOAD_AVG_15_MIN, "PT_SI_LOAD_AVG_15_MIN"}, 
+      {PT_SI_MEM_TOTAL, "PT_SI_MEM_TOTAL"}, 
+      {PT_SI_MEM_FREE, "PT_SI_MEM_FREE"}, 
+      {PT_SI_MEM_BUFFERS, "PT_SI_MEM_BUFFERS"}, 
+      {PT_SI_MEM_SWAP_TOTAL, "PT_SI_MEM_SWAP_TOTAL"}, 
+      {PT_SI_MEM_SWAP_FREE, "PT_SI_MEM_SWAP_FREE"}, 
+      {PT_SI_MEM_HIGH_TOTAL, "PT_SI_MEM_HIGH_TOTAL"}, 
+      {PT_SI_MEM_HIGH_FREE, "PT_SI_MEM_HIGH_FREE"}, 
+      {PT_SI_MEM_UNIT_SIZE, "PT_SI_MEM_UNIT_SIZE"}, 
+      {PT_MI_TOTAL, "PT_MI_TOTAL"}, 
+      {PT_MI_FREE, "PT_MI_FREE"}, 
+      {PT_MI_BUFFERS, "PT_MI_BUFFERS"}, 
+      {PT_MI_CACHED, "PT_MI_CACHED"}, 
+      {PT_UNM_SYSNAME, "PT_UNM_SYSNAME"}, 
+      {PT_UNM_NODENAME, "PT_UNM_NODENAME"}, 
+      {PT_UNM_RELEASE, "PT_UNM_RELEASE"}, 
+      {PT_UNM_VERSION, "PT_UNM_VERSION"}, 
+      {PT_UNM_MACHINE, "PT_UNM_MACHINE"}, 
+      {PT_PL_CMD, "PT_PL_CMD"}, 
+      {PT_PL_TID, "PT_PL_TID"}, 
+      {PT_PL_PPID, "PT_PL_PPID"}, 
+      {PT_PL_RESIDENT, "PT_PL_RESIDENT"}, 
+      {PT_PL_UTIME, "PT_PL_UTIME"}, 
+      {PT_PL_STIME, "PT_PL_STIME"}, 
+      {PT_OWRT_UBUS_PATH, "PT_OWRT_UBUS_PATH"}, 
+      {PT_OWRT_UBUS_METHOD, "PT_OWRT_UBUS_METHOD"}, 
+      {PT_OWRT_UBUS_ARG, "PT_OWRT_UBUS_ARG"}, 
+      {PT_OWRT_UBUS_RESULT, "PT_OWRT_UBUS_RESULT"}, 
+      {PT_SHELL_CMD, "PT_SHELL_CMD"}, 
+      {PT_SHELL_STDOUT, "PT_SHELL_STDOUT"}, 
+      {PT_SHELL_STDERR, "PT_SHELL_STDERR"}, 
+      {PT_SHELL_EXIT_CODE, "PT_SHELL_EXIT_CODE"}, 
+    };
+    enum SysagentCommand : int {
+      UNKNWON_COMMAND = 0,
+      CMD_GET_SYSINFO = 1,
+      CMD_GET_CPUSTATS = 2,
+      CMD_GET_MEMINFO = 3,
+      CMD_GET_UNAME = 4,
+      CMD_GET_PROCESS_LST = 5,
+      CMD_GET_FILE_STAT = 6,
+      CMD_UBUS_CALL = 7,
+      CMD_SHELL_EXEC = 8,
+    };
+    static const std::map<int, std::string> SysagentCommandMap = {
+      {UNKNWON_COMMAND, "UNKNWON_COMMAND"}, 
+      {CMD_GET_SYSINFO, "CMD_GET_SYSINFO"}, 
+      {CMD_GET_CPUSTATS, "CMD_GET_CPUSTATS"}, 
+      {CMD_GET_MEMINFO, "CMD_GET_MEMINFO"}, 
+      {CMD_GET_UNAME, "CMD_GET_UNAME"}, 
+      {CMD_GET_PROCESS_LST, "CMD_GET_PROCESS_LST"}, 
+      {CMD_GET_FILE_STAT, "CMD_GET_FILE_STAT"}, 
+      {CMD_UBUS_CALL, "CMD_UBUS_CALL"}, 
+      {CMD_SHELL_EXEC, "CMD_SHELL_EXEC"}, 
     };
 }
 

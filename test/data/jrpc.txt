@@ -11,3 +11,4 @@
 {"jsonrpc": "2.0", "method": "CMD_GET_PROCESS_LST", "params": {"MINK_SERVICE_ID": 47, "MINK_DTYPE": "sysagentd", "MINK_DID": "sys_ag_01"}, "id": "1"}
 {"jsonrpc": "2.0", "method": "CMD_GET_PROCESS_LST", "params": {"MINK_SERVICE_ID": 47, "MINK_DTYPE": "sysagentd"}, "id": "4"}
 {"jsonrpc": "2.0", "method": "CMD_SHELL_EXEC", "params": {"MINK_SERVICE_ID": 47, "MINK_DTYPE": "sysagentd", "PT_SHELL_CMD": "ifconfig -a"}, "id": "4"}
+{"jsonrpc": "2.0", "method": "CMD_UBUS_CALL", "params": {"MINK_SERVICE_ID": 47, "MINK_DTYPE": "sysagentd", "PT_OWRT_UBUS_PATH": "test", "PT_OWRT_UBUS_METHOD": "toto"}, "id": "4"}

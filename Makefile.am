@@ -68,8 +68,11 @@ endif
 
 lib_LTLIBRARIES = libgdt.la
 pkglib_LTLIBRARIES =
-bin_PROGRAMS = routingd \
-               gdttrapc
+bin_PROGRAMS = routingd
+
+if ENABLE_GDTTRAPC
+bin_PROGRAMS += gdttrapc
+endif
 
 if ENABLE_CONFIGD
 bin_PROGRAMS += configd \
@@ -195,6 +198,7 @@ cli_service_LDADD = libcli.la \
 endif
 
 # gdt trapc client
+if ENABLE_GDTTRAPC
 gdttrapc_SOURCES = src/services/stats/gdttrapc.cpp
 gdttrapc_CPPFLAGS = ${COMMON_INCLUDES}
 gdttrapc_LDADD = libasn1.la \
@@ -202,6 +206,7 @@ gdttrapc_LDADD = libasn1.la \
                  libminkutils.la \
                  libcfg.la \
                  ${NCURSES_LIBS}
+endif
 
 # configd
 if ENABLE_CONFIGD

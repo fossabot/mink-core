@@ -124,6 +124,8 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
     // create result object
     j[json_rpc::JsonRpc::RESULT_] = json::array();
     auto &j_params = j.at(json_rpc::JsonRpc::RESULT_);
+    // tmp val string
+    std::string val;
 
     // loop GDT params
     mink_utils::PooledVPMap<uint32_t>::it_t it = smsg->vpmap.get_begin();
@@ -132,9 +134,11 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
         // param name from ID
         auto itt = gdt_grpc::SysagentParamMap.find(it->first.key);
         const std::string pname = (itt != gdt_grpc::SysagentParamMap.cend() ? itt->second : "n/a");
+        // get param type
+        const int pt = it->second.get_type();
 
-        // pointer type is used for long params
-        if(it->second.get_type() == mink_utils::DPT_POINTER){
+        // pointer type is used for long params (fragmented)
+        if(pt == mink_utils::DPT_POINTER){
             auto data = static_cast<data_vec_t *>((void *)it->second);
             try {
                 std::string s(reinterpret_cast<char *>(data->data()),
@@ -155,11 +159,32 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
             continue;
         }
 
-        // skip non-string params
-        if(it->second.get_type() != mink_utils::DPT_STRING) continue;
+
+        // short STRING
+        if (pt == mink_utils::DPT_STRING) {
+            val = static_cast<char *>(it->second);
+
+        // STRING as OCTETES (check if printable)
+        } else if (pt == mink_utils::DPT_OCTETS) {
+            unsigned char *od = static_cast<unsigned char *>(it->second);
+            bool is_p = true;
+            for (int i = 0; i < it->second.get_size(); i++) {
+                if (!std::isprint(od[i])) {
+                    is_p = false;
+                    break;
+                }
+            }
+            if (!is_p) continue;
+            val = std::move(std::string(reinterpret_cast<char *>(od),
+                                        it->second.get_size()));
+
+            // ignore other types
+        } else continue;
+
+        // setup json object
         auto o = json::object();
-        o[pname] = static_cast<char *>(it->second);
         o["idx"] = it->first.index;
+        o[pname] = val;
         // new json rpc param object
         j_params.push_back(o);
     }
@@ -221,12 +246,25 @@ void EVParamStreamNew::run(gdt::GDTCallbackArgs *args){
     smsg->params.set_param(2, data);
 }
 
+void EVParamShortNew::run(gdt::GDTCallbackArgs *args){
+    gdt::ServiceMessage *smsg = args->get<gdt::ServiceMessage>(gdt::GDT_CB_INPUT_ARGS, 
+                                                               gdt::GDT_CB_ARGS_SRVC_MSG);
+    gdt::ServiceParam *sparam = args->get<gdt::ServiceParam>(gdt::GDT_CB_INPUT_ARGS,
+                                                             gdt::GDT_CB_ARGS_SRVC_PARAM);
+    // save data
+    smsg->vpmap.set_octets(sparam->get_id(), 
+                           sparam->get_data(),
+                           sparam->get_data_size(), 
+                           sparam->get_index());
+}
+
 void EVSrvcMsgRX::run(gdt::GDTCallbackArgs *args){
     gdt::ServiceMessage *smsg = args->get<gdt::ServiceMessage>(gdt::GDT_CB_INPUT_ARGS, 
                                                                gdt::GDT_CB_ARGS_SRVC_MSG);
     // set handlers
     smsg->set_callback(gdt::GDT_ET_SRVC_MSG_COMPLETE, &msg_recv);
     smsg->set_callback(gdt::GDT_ET_SRVC_PARAM_STREAM_NEW, &prm_strm_new);
+    smsg->set_callback(gdt::GDT_ET_SRVC_SHORT_PARAM_NEW, &prm_short_new);
 }
 
 void EVSrvcMsgSent::run(gdt::GDTCallbackArgs *args){

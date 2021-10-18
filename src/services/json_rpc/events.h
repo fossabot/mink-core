@@ -95,6 +95,11 @@ public:
     EVParamStreamLast prm_strm_last;
 };
 
+// New Short param
+class EVParamShortNew : public gdt::GDTCallbackMethod {
+public:
+    void run(gdt::GDTCallbackArgs *args) override;
+};
 
 // New inbound service message started
 class EVSrvcMsgRX : public gdt::GDTCallbackMethod {
@@ -104,6 +109,7 @@ public:
     EVSrvcMsgErr msg_err;
     EVSrvcMsgRecv msg_recv;
     EVParamStreamNew prm_strm_new;
+    EVParamShortNew prm_short_new;
 };
 
 

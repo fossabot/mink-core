@@ -14,6 +14,7 @@
 #include "jrpc.h"
 #include <json_rpc.h>
 #include <boost/asio/signal_set.hpp>
+#include <gdt.pb.enums_only.h>
 
 JsonRpcdDescriptor::JsonRpcdDescriptor(const char *_type, 
                                        const char *_desc)
