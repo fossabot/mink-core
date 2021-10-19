@@ -13,6 +13,21 @@
 #include <gdt.pb.enums_only.h>
 #include <stdexcept>
 
+// static members
+const char *json_rpc::JsonRpc::JSON_RPC_        = "jsonrpc";
+const char *json_rpc::JsonRpc::VERSION_         = "2.0";
+const char *json_rpc::JsonRpc::METHOD_          = "method";
+const char *json_rpc::JsonRpc::PARAMS_          = "params";
+const char *json_rpc::JsonRpc::RESULT_          = "result";
+const char *json_rpc::JsonRpc::ID_              = "id";
+const char *json_rpc::JsonRpc::ERROR_           = "error";
+const char *json_rpc::JsonRpc::CODE_            = "code";
+const char *json_rpc::JsonRpc::MESSAGE_         = "message";
+// mink string constants
+const char *json_rpc::JsonRpc::MINK_SERVICE_ID_ = "MINK_SERVICE_ID";
+const char *json_rpc::JsonRpc::MINK_DTYPE_      = "MINK_DTYPE";
+const char *json_rpc::JsonRpc::MINK_DID_        = "MINK_DID";
+
 json_rpc::JsonRpc::JsonRpc(const json &data) : data_(data){
 
 }
