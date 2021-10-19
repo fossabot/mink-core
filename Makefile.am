@@ -122,10 +122,10 @@ endif
 
 # json rpc
 if ENABLE_JRPC
-jrpcd_SOURCES = src/services/json_rpc/jrpc.cpp \
+jrpcd_SOURCES = src/services/json_rpc/events.cpp \
+                src/services/json_rpc/jrpcd.cpp \
                 src/services/json_rpc/ws_server.cpp \
-                src/services/json_rpc/events.cpp \
-                src/services/json_rpc/jrpcd.cpp
+                src/services/json_rpc/jrpc.cpp
 jrpcd_CPPFLAGS = ${COMMON_INCLUDES} \
                  -Isrc/proto
 jrpcd_LDADD = libdaemon.la \
