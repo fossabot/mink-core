@@ -55,6 +55,37 @@ void EVHbeatCleanup::run(gdt::GDTCallbackArgs *args) {
 }
 #endif
 
+
+static std::string cmap_process_timeout(mink_utils::CorrelationMap<JrpcPayload> &cmap){
+    // lock
+    cmap.lock();
+    // current ts
+    time_t now = time(nullptr);
+    // reply string
+    std::string ws_rpl;
+    // loop
+    for (auto it = cmap.begin(), it_next = it; it != cmap.end(); it = it_next) {
+        // next
+        ++it_next;
+
+        // calculate timeout
+        if(now - it->second.ts <= it->second.data_timeout) continue;
+        // payload
+        JrpcPayload &pld = it->second.data;
+        // session pointer
+        std::shared_ptr<WsSession> ws = pld.cdata;
+        int id = pld.id; 
+        // remove from list
+        cmap.remove(it);
+        // create json rpc reply
+        ws_rpl += json_rpc::JsonRpc::gen_err(-1, id).dump();
+    }
+    // unlock
+    cmap.unlock();
+    // return error string 
+    return ws_rpl;
+}
+
 void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
     std::cout << "EVSrvcMsgRecv::run" << std::endl;
     gdt::ServiceMessage* smsg = args->get<gdt::ServiceMessage>(gdt::GDT_CB_INPUT_ARGS, 
@@ -100,6 +131,8 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
     if(!vp_guid) return;
     
     std::cout << "GUIDD found!!!" << std::endl;
+    // process timeout
+    std::string ws_timeout_rpl = cmap_process_timeout(dd->cmap);
     // correlate guid
     dd->cmap.lock();
     mink_utils::Guid guid;
@@ -121,6 +154,8 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
 
 
     std::cout << "GUIDD correlated!!!" << std::endl;
+    std::cout << "GUIDD MAP SIZE: " << dd->cmap.size() <<  std::endl;
+
     // create result object
     j[json_rpc::JsonRpc::RESULT_] = json::array();
     auto &j_params = j.at(json_rpc::JsonRpc::RESULT_);
@@ -188,8 +223,9 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
         // new json rpc param object
         j_params.push_back(o);
     }
+
     // create json rpc reply
-    std::string ws_rpl = j.dump();
+    std::string ws_rpl = ws_timeout_rpl + j.dump();
     beast::flat_buffer &b = ws->get_buffer();
     std::size_t sz = net::buffer_copy(b.prepare(ws_rpl.size()), net::buffer(ws_rpl));
     

@@ -217,7 +217,6 @@ bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSessio
 
     // process params
     jrpc.process_params([&ev_usr_cb, &pmap, msg, &jrpc](int id, const std::string &s) {
-        std::cout << "Param: " << s << std::endl;
         if(s.size() > msg->vpmap.get_max()) {
             gdt::ServiceParam *sp = msg->get_smsg_manager()
                                        ->get_param_factory()
@@ -251,13 +250,8 @@ bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSessio
     msg->vpmap.set_cstr(asn1::ParameterType::_pt_mink_daemon_id,
                         dd->get_daemon_id());
 
-    // allocate payload object for correlation (grpc <-> gdt)
-    JrpcPayload pld;//dd->cpool.allocate_constructed();
-//    if (!pld) {
-//        // TODO stats
-//        dd->gdtsmm->free_smsg(msg);
-//        return false;
-//    }
+    // create payload object for correlation (grpc <-> gdt)
+    JrpcPayload pld;
     
     // set correlation payload data
     pld.cdata = ws;

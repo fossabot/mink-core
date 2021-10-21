@@ -47,6 +47,15 @@ json json_rpc::JsonRpc::gen_err(const int code){
     return j;
 }
 
+json json_rpc::JsonRpc::gen_err(const int code, const int id){
+    json j;
+    j[JSON_RPC_] = const_cast<char*>(VERSION_);
+    j[ERROR_][CODE_] = code;
+    j[ID_] = id;
+    return j;
+}
+
+
 json json_rpc::JsonRpc::gen_response(int id){
     json j;
     j[JSON_RPC_] = const_cast<char*>(VERSION_);
