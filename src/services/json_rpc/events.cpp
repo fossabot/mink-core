@@ -56,7 +56,7 @@ void EVHbeatCleanup::run(gdt::GDTCallbackArgs *args) {
 #endif
 
 
-static std::string cmap_process_timeout(mink_utils::CorrelationMap<JrpcPayload> &cmap){
+static void cmap_process_timeout(mink_utils::CorrelationMap<JrpcPayload> &cmap){
     // lock
     cmap.lock();
     // current ts
@@ -77,13 +77,9 @@ static std::string cmap_process_timeout(mink_utils::CorrelationMap<JrpcPayload> 
         int id = pld.id; 
         // remove from list
         cmap.remove(it);
-        // create json rpc reply
-        ws_rpl += json_rpc::JsonRpc::gen_err(-1, id).dump();
     }
     // unlock
     cmap.unlock();
-    // return error string 
-    return ws_rpl;
 }
 
 void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
@@ -132,7 +128,7 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
     
     std::cout << "GUIDD found!!!" << std::endl;
     // process timeout
-    std::string ws_timeout_rpl = cmap_process_timeout(dd->cmap);
+    cmap_process_timeout(dd->cmap);
     // correlate guid
     dd->cmap.lock();
     mink_utils::Guid guid;
@@ -225,7 +221,7 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
     }
 
     // create json rpc reply
-    std::string ws_rpl = ws_timeout_rpl + j.dump();
+    std::string ws_rpl = j.dump();
     beast::flat_buffer &b = ws->get_buffer();
     std::size_t sz = net::buffer_copy(b.prepare(ws_rpl.size()), net::buffer(ws_rpl));
     

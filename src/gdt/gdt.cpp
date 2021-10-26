@@ -4857,11 +4857,14 @@ int gdt::GDTSession::start_server(const char* bind_address, unsigned int bind_po
         // bind to specific address
         if(bind_address != nullptr){
             set_server_socket(sctp::init_sctp_server(inet_addr(bind_address), 0, bind_port));
-            set_server_mode(true);
-            // bind to INADDR_ANY
+            if (get_server_socket() > 0)
+                set_server_mode(true);
+
+        // bind to INADDR_ANY
         }else{
             set_server_socket(sctp::init_sctp_server(0, 0, bind_port));
-            set_server_mode(true);
+            if (get_server_socket() > 0)
+                set_server_mode(true);
         }
         // start server thread
         if(get_server_mode()){

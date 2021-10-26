@@ -67,7 +67,7 @@ public:
     gdt::HeartbeatInfo *hbeat = nullptr;
 #endif
     // routing daemons
-    std::vector<std::string *> rtrd_lst;
+    std::vector<std::string> rtrd_lst;
     // gdt session
     gdt::GDTSession *gdts = nullptr;
     // gdt client

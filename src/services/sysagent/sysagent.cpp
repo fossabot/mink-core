@@ -35,11 +35,7 @@ SysagentdDescriptor::SysagentdDescriptor(const char *_type, const char *_desc)
 }
 
 SysagentdDescriptor::~SysagentdDescriptor(){
-    // free routing deamons address strings
-    std::all_of(rtrd_lst.cbegin(), rtrd_lst.cend(), [](std::string *s) {
-        delete s;
-        return true;
-    });
+    delete gdtsmm;
 }
 
 void SysagentdDescriptor::print_help(){
@@ -131,7 +127,7 @@ void SysagentdDescriptor::process_args(int argc, char **argv){
                 exit(EXIT_FAILURE);
 
             } else {
-                rtrd_lst.push_back(new std::string(optarg));
+                rtrd_lst.push_back(std::string(optarg));
             }
             break;
 
@@ -229,6 +225,33 @@ void SysagentdDescriptor::init_plugins(const char *pdir){
 
 }
 
+static void rtrds_connect(SysagentdDescriptor *d){
+    // connect to routing daemons
+    std::smatch regex_groups;
+    std::regex addr_regex("(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}):(\\d+)");
+
+
+    // loop routing daemons
+    for (size_t i = 0; i < d->rtrd_lst.size(); i++) {
+        // separate IP and PORT
+        if (!std::regex_match(d->rtrd_lst[i], regex_groups, addr_regex))
+            continue;
+        // connect to routing daemon
+        gdt::GDTClient *gdtc = d->gdts->connect(regex_groups[1].str().c_str(),
+                                                atoi(regex_groups[2].str().c_str()), 
+                                                16, 
+                                                nullptr, 
+                                                0);
+
+        // setup client for service messages
+        if (gdtc!= nullptr) {
+            // setup service message event handlers
+            d->gdtsmm->setup_client(gdtc);
+        }
+    }
+}
+
+
 void SysagentdDescriptor::init_gdt(){
     // service message manager
     gdtsmm = new gdt::ServiceMsgManager(&idt_map,
@@ -256,27 +279,16 @@ void SysagentdDescriptor::init_gdt(){
                              dparams.get_pval<int>(1));
 
     // connect to routing daemons
-    std::smatch grps;
-    std::regex rgx("(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}):(\\d+)");
+    rtrds_connect(this);
 
+    // try to connect if unsuccessful
+    while (gdts->get_client_count() == 0 &&
+           !mink::CURRENT_DAEMON->DAEMON_TERMINATED) {
 
-    // loop routing daemons
-    for (size_t i = 0; i < rtrd_lst.size(); i++) {
-        // separate IP and PORT
-        if (!std::regex_search(*rtrd_lst[i], grps, rgx))
-            continue;
-        // connect to routing daemon
-        gdt::GDTClient *gdtc = gdts->connect(grps[1].str().c_str(),
-                                             atoi(grps[2].str().c_str()),
-                                             16,
-                                             nullptr,
-                                             0);
-
-        // setup client for service messages
-        if (gdtc!= nullptr) {
-            // setup service message event handlers
-            gdtsmm->setup_client(gdtc);
-        }
+        mink::CURRENT_DAEMON->log(mink::LLT_INFO,
+                                 "Cannot connect to routingd, trying again...");
+        rtrds_connect(this);
+        sleep(2);
     }
 }
 

@@ -10,6 +10,10 @@
 
 #include <getopt.h>
 #include <routing.h>
+#include <thread>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include <net/if.h>
 
 RoutingdDescriptor::RoutingdDescriptor(const char *_type, 
                                        const char *_desc) : mink::DaemonDescriptor(_type, nullptr, _desc),
@@ -157,6 +161,21 @@ void RoutingdDescriptor::print_help() {
         << std::endl;
 }
 
+static void parseRtattr(struct rtattr **tb, 
+                        int max, 
+                        struct rtattr *rta,
+                        int len) {
+
+    memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
+    while (RTA_OK(rta, len)) {
+        if (rta->rta_type <= max) {
+            tb[rta->rta_type] = rta;
+        }
+        rta = RTA_NEXT(rta, len);
+    }
+}
+
+
 void RoutingdDescriptor::init() {
     // init gdt
     init_gdt();
@@ -173,7 +192,125 @@ void RoutingdDescriptor::init() {
     }
 #endif
     // accept connections (server mode)
-    gdts->start_server(nullptr, gdt_port);
+    while(gdts->start_server(nullptr, gdt_port) < 0 && !mink::CURRENT_DAEMON->DAEMON_TERMINATED){
+        mink::CURRENT_DAEMON->log(
+            mink::LLT_INFO,
+            "Cannot init SCTP server on node [%s], trying again...",
+            get_daemon_id());
+        sleep(2);
+    }
+
+    // interface up/down handler
+    std::thread if_thh([this] {
+        const int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+        if (fd > 0) {
+            struct sockaddr_nl sa = {0};
+
+            sa.nl_family = AF_NETLINK;
+            sa.nl_groups = RTNLGRP_LINK;
+            bind(fd, (struct sockaddr *)&sa, sizeof(sa));
+
+            struct sockaddr_nl local = {0};
+            char buf[8192] = {0};
+            struct iovec iov;
+            iov.iov_base = buf;
+            iov.iov_len = sizeof(buf);
+
+            struct msghdr msg = {0};
+            msg.msg_name = &local;
+            msg.msg_namelen = sizeof(local);
+            msg.msg_iov = &iov;
+            msg.msg_iovlen = 1;
+
+            while (!mink::CURRENT_DAEMON->DAEMON_TERMINATED) {
+                ssize_t status = recvmsg(fd, &msg, MSG_DONTWAIT);
+
+                //  check status
+                if (status < 0) {
+                    if (errno == EINTR || errno == EAGAIN) {
+                        sleep(1);
+                        continue;
+                    }
+                    // failed to read nl msg
+                    continue;
+                }
+
+                if (msg.msg_namelen != sizeof(local)) {
+                    // invalid length
+                    continue;
+                }
+
+                // message parser
+                struct nlmsghdr *h;
+
+                for (h = (struct nlmsghdr *)buf;
+                     status >= (ssize_t)sizeof(*h);) {
+
+                    int len = h->nlmsg_len;
+                    int l = len - sizeof(*h);
+                    char *ifName;
+
+                    if ((l < 0) || (len > status)) {
+                        continue;
+                    }
+                    if ((h->nlmsg_type == RTM_DELLINK) ||
+                        (h->nlmsg_type == RTM_NEWLINK) ||
+                        (h->nlmsg_type == RTM_DELADDR)) {
+
+                        char *ifName;
+                        struct ifinfomsg *ifi;
+                        struct rtattr *tb[IFLA_MAX + 1];
+                        ifi = (struct ifinfomsg *)NLMSG_DATA(h);
+                        parseRtattr(tb, IFLA_MAX, IFLA_RTA(ifi), h->nlmsg_len);
+                        if (tb[IFLA_IFNAME]) {
+                            ifName = (char *)RTA_DATA(tb[IFLA_IFNAME]);
+                        }
+                        /*
+                        if (ifi->ifi_flags & IFF_UP) {
+                            std::cout << "Interfface UP" << std::endl;
+                        } else {
+                            std::cout << "Interfface DOWN" << std::endl;
+                        }
+                        */
+
+                        switch (h->nlmsg_type) {
+                            case RTM_DELADDR:
+                            case RTM_DELLINK:
+                            case RTM_NEWLINK:
+                                gdts->stop_server();
+                                gdt::destroy_session(gdts);
+                                // start GDT session
+                                gdts = gdt::init_session(get_daemon_type(), 
+                                                         get_daemon_id(), 
+                                                         (int)*extra_params.get_param(0),
+                                                         (int)*extra_params.get_param(1), 
+                                                         true, 
+                                                         (int)*extra_params.get_param(1));
+
+                                // set routing algorighm
+                                gdts->set_routing_algo(gdt::GDT_RA_WRR);
+                                gdts->start_server(nullptr, gdt_port);
+                                while (gdts->start_server(nullptr, gdt_port) < 0 &&
+                                       !mink::CURRENT_DAEMON->DAEMON_TERMINATED) {
+                                    mink::CURRENT_DAEMON->log(mink::LLT_INFO,
+                                        "Cannot init SCTP server on node [%s], "
+                                        "trying again...", get_daemon_id());
+                                    sleep(2);
+                                }
+
+                                break;
+                        }
+                    }
+                    status -= NLMSG_ALIGN(len);
+                    h = (struct nlmsghdr *)((char *)h + NLMSG_ALIGN(len));
+                }
+                sleep(1);
+            }
+       }
+    });
+
+    if_thh.detach();
+
 
     // connect stats with routing
     gdt::GDTClient *gdtc = gdt_stats->get_gdt_session()

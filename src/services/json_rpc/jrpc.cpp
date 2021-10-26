@@ -151,6 +151,32 @@ void JsonRpcdDescriptor::print_help(){
         << std::endl;
 }
 
+static void rtrds_connect(JsonRpcdDescriptor *rd){
+    // connect to routing daemons
+    std::smatch regex_groups;
+    std::regex addr_regex("(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}):(\\d+)");
+
+
+    // loop routing daemons
+    for (size_t i = 0; i < rd->rtrd_lst.size(); i++) {
+        // separate IP and PORT
+        if (!std::regex_match(rd->rtrd_lst[i], regex_groups, addr_regex))
+            continue;
+        // connect to routing daemon
+        gdt::GDTClient *gdtc = rd->gdts->connect(regex_groups[1].str().c_str(),
+                                                 atoi(regex_groups[2].str().c_str()), 
+                                                 16, 
+                                                 nullptr, 
+                                                 0);
+
+        // setup client for service messages
+        if (gdtc!= nullptr) {
+            // setup service message event handlers
+            rd->gdtsmm->setup_client(gdtc);
+        }
+    }
+}
+
 void JsonRpcdDescriptor::init_gdt(){
     // service message manager
     gdtsmm = new gdt::ServiceMsgManager(&idt_map, 
@@ -178,29 +204,17 @@ void JsonRpcdDescriptor::init_gdt(){
                              dparams.get_pval<int>(1));
 
     // connect to routing daemons
-    std::smatch regex_groups;
-    std::regex addr_regex("(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}):(\\d+)");
+    rtrds_connect(this);
 
+    // try to connect if unsuccessful
+    while (gdts->get_client_count() == 0 &&
+           !mink::CURRENT_DAEMON->DAEMON_TERMINATED) {
 
-    // loop routing daemons
-    for (size_t i = 0; i < rtrd_lst.size(); i++) {
-        // separate IP and PORT
-        if (!std::regex_match(rtrd_lst[i], regex_groups, addr_regex))
-            continue;
-        // connect to routing daemon
-        gdt::GDTClient *gdtc = gdts->connect(regex_groups[1].str().c_str(),
-                                             atoi(regex_groups[2].str().c_str()), 
-                                             16, 
-                                             nullptr, 
-                                             0);
-
-        // setup client for service messages
-        if (gdtc!= nullptr) {
-            // setup service message event handlers
-            gdtsmm->setup_client(gdtc);
-        }
+        mink::CURRENT_DAEMON->log(mink::LLT_INFO,
+                                 "Cannot connect to routingd, trying again...");
+        rtrds_connect(this);
+        sleep(2);
     }
-
 }
 
 static void handler(const boost::system::error_code  error, int signum){
@@ -227,7 +241,6 @@ void JsonRpcdDescriptor::init_wss(uint16_t port){
 
     // Start an asynchronous wait for one of the signals to occur.
     signals.async_wait([&ioc](const boost::system::error_code error, int signum) {
-        std::cout << "==== SIGNAL " << std::endl;
         ioc.stop();
         DaemonDescriptor::DAEMON_TERMINATED = true;
     });
