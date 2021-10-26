@@ -164,7 +164,9 @@ static void ubus_event_cb(ubus_request *req, int type, blob_attr *msg){
         smsg->vpmap.set_pointer(0, ic->ev_usr_cb);
         smsg->vpmap.set_pointer(1, pmap);
     }
-
+    ic->smsg->vpmap.erase_param(PT_OWRT_UBUS_METHOD); 
+    ic->smsg->vpmap.erase_param(PT_OWRT_UBUS_ARG); 
+    ic->smsg->vpmap.erase_param(PT_OWRT_UBUS_PATH); 
     // cleanup
     blob_buf_free(&ic->msg);
     delete ic;

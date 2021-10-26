@@ -114,6 +114,7 @@ static void impl_shell_exec(gdt::ServiceMessage *smsg){
     }
     smsg->vpmap.set_pointer(0, cb);
     smsg->vpmap.set_pointer(1, &cb->pmap);
+    smsg->vpmap.erase_param(PT_SHELL_CMD);
 
 }
 
