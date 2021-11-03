@@ -171,6 +171,7 @@ static void rtrds_connect(JsonRpcdDescriptor *rd){
 
         // setup client for service messages
         if (gdtc!= nullptr) {
+            rd->rtrd_gdtc = gdtc;
             // setup service message event handlers
             rd->gdtsmm->setup_client(gdtc);
         }

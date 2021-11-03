@@ -245,6 +245,7 @@ static void rtrds_connect(SysagentdDescriptor *d){
 
         // setup client for service messages
         if (gdtc!= nullptr) {
+            d->rtrd_gdtc = gdtc;
             // setup service message event handlers
             d->gdtsmm->setup_client(gdtc);
         }
