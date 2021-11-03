@@ -125,14 +125,47 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
     }else{
         // create json rpc parser
         json_rpc::JsonRpc jrpc(j);
-
         // verify if json is a valid json rpc data
         try {
             jrpc.verify(true);
+            int id = jrpc.get_id();
             // check if method is supported
             if(jrpc.get_method_id() > -1){
+                // tmp guid
+                uint8_t guid_b[16];
                 // push via gdt
-                gdt_push(jrpc, shared_from_this());
+                if (!gdt_push(jrpc, shared_from_this(), guid_b)) {
+                    throw std::runtime_error("GDT push error!");
+
+                // setup timeout
+                }else{
+                    std::shared_ptr<WsSession> ws = shared_from_this();
+                    // timeout handler
+                    std::thread tt_th([ws, guid_b, id] {
+                        mink_utils::Guid g;
+                        g.set(guid_b);
+                        // sleep
+                        sleep(2);
+                        // get current guid (generated in gdt_push)
+                        auto dd = static_cast<JsonRpcdDescriptor *>(mink::CURRENT_DAEMON);
+                        // correlate guid
+                        dd->cmap.lock();
+                        JrpcPayload *pld = dd->cmap.get(g);
+                        if (pld) {
+                            dd->cmap.remove(g);
+                            dd->cmap.unlock();
+                            std::string th_rpl = json_rpc::JsonRpc::gen_err(-2, id).dump();
+                            beast::flat_buffer &b = ws->get_buffer();
+                            std::size_t th_rpl_sz = net::buffer_copy(b.prepare(th_rpl.size()),
+                                                                     net::buffer(th_rpl));
+
+                            ws->send_buff(b, th_rpl_sz);
+                            return;
+                        }
+                        dd->cmap.unlock();
+                    });
+                    tt_th.detach();
+                }
             }
 
         } catch (std::exception &e) {
@@ -141,17 +174,11 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
             sz = net::buffer_copy(buffer_.prepare(ws_rpl.size()),
                                   net::buffer(ws_rpl));
             send_buff(buffer_, sz);
-            //return;
         }
     }
-    
-    // no error
-    //ws_rpl = json_rpc::JsonRpc::gen_err(999).dump();
-    //sz = net::buffer_copy(buffer_.prepare(ws_rpl.size()), net::buffer(ws_rpl));
-    //send_buff(buffer_, sz);
 }
 
-bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSession> ws){
+bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSession> ws, uint8_t *guid){
     auto dd = static_cast<JsonRpcdDescriptor*>(mink::CURRENT_DAEMON);
     // local routing daemon pointer
     gdt::GDTClient *gdtc = nullptr;
@@ -161,8 +188,6 @@ bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSessio
     //JrpcPayload *pld = nullptr;
     // randomizer
     mink_utils::Randomizer rand;
-    // tmp guid
-    uint8_t guid[16];
 
     // *********************************************
     // ************ push via GDT *******************

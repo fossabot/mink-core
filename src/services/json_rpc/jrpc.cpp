@@ -217,10 +217,6 @@ void JsonRpcdDescriptor::init_gdt(){
     }
 }
 
-static void handler(const boost::system::error_code  error, int signum){
-    std::cout << "==== SIGNAL " << std::endl;
-}
-
 void JsonRpcdDescriptor::init_wss(uint16_t port){
     auto const addr = net::ip::make_address("0.0.0.0");
     auto const th_nr = 1;
@@ -242,10 +238,10 @@ void JsonRpcdDescriptor::init_wss(uint16_t port){
     // Start an asynchronous wait for one of the signals to occur.
     signals.async_wait([&ioc](const boost::system::error_code error, int signum) {
         ioc.stop();
-        DaemonDescriptor::DAEMON_TERMINATED = true;
     });
 
     ioc.run();
+    DaemonDescriptor::DAEMON_TERMINATED = true;
     std::cout << "DONE" << std::endl;
 }
 

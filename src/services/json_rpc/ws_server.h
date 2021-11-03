@@ -46,7 +46,7 @@ public:
     void on_read(beast::error_code ec, std::size_t bt);
     void on_write(beast::error_code ec, std::size_t bt);
     void send_buff(beast::flat_buffer &b, std::size_t sz);
-    bool gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSession> ws);
+    bool gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSession> ws, uint8_t *guid);
     beast::flat_buffer &get_buffer();
     websocket::stream<beast::tcp_stream> &get_tcp_stream();
 
