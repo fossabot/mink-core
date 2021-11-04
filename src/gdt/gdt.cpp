@@ -5134,7 +5134,7 @@ gdt::GDTClient* gdt::GDTSession::connect(const char* end_point_address,
         return nullptr;
     // client
     int client_id = -1;
-    if((local_address == nullptr) || (local_port == 0)){
+    if((local_address == nullptr)){
         // connect
         // connect and bind to specific ip:port
         client_id = sctp::init_sctp_client_bind(inet_addr(end_point_address),

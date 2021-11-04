@@ -80,8 +80,8 @@ public:
     gdt::GDTStatsSession *gdt_stats = nullptr;
     // srvc msg handler
     EVSrvcMsgRX ev_srvcm_rx;
-    // GDT port
-    int gdt_port;
+    // local IP
+    std::string local_ip;
     // plugin dir
     std::string plg_dir;
     // extra options

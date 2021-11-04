@@ -47,6 +47,7 @@ RoutingdDescriptor::~RoutingdDescriptor() {
 
 void RoutingdDescriptor::process_args(int argc, char **argv) {
     std::regex addr_regex("(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}):(\\d+)");
+    std::regex ipv4_regex("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
     int option_index = 0;
     struct option long_options[] = {{"gdt-streams", required_argument, 0, 0},
                                     {"gdt-stimeout", required_argument, 0, 0},
@@ -57,7 +58,7 @@ void RoutingdDescriptor::process_args(int argc, char **argv) {
         exit(EXIT_FAILURE);
     } else {
         int opt;
-        while ((opt = getopt_long(argc, argv, "?p:c:i:D", long_options,
+        while ((opt = getopt_long(argc, argv, "?p:c:i:h:D", long_options,
                                   &option_index)) != -1) {
             switch (opt) {
             // long options
@@ -94,6 +95,20 @@ void RoutingdDescriptor::process_args(int argc, char **argv) {
                     exit(EXIT_FAILURE);
                 }
                 break;
+
+            // local ip
+            case 'h':
+                if (!std::regex_match(optarg, ipv4_regex)) {
+                    std::cout << "ERROR: Invalid local IPv4 address format '"
+                              << optarg << "'!" << std::endl;
+                    exit(EXIT_FAILURE);
+
+                } else {
+                    local_ip.assign(optarg);
+                }
+
+                break;
+
 
             // config daemon address
             case 'c':
@@ -150,6 +165,7 @@ void RoutingdDescriptor::print_help() {
     std::cout << " -c\tconfig daemon address (ipv4:port)" << std::endl;
 #endif
     std::cout << " -p\tGDT inbound port" << std::endl;
+    std::cout << " -h\tlocal IPv4 address" << std::endl;
     std::cout << " -D\tstart in debug mode" << std::endl;
     std::cout << std::endl;
     std::cout << "GDT Options:" << std::endl;
@@ -192,11 +208,11 @@ void RoutingdDescriptor::init() {
     }
 #endif
     // accept connections (server mode)
-    while(gdts->start_server(nullptr, gdt_port) < 0 && !mink::CURRENT_DAEMON->DAEMON_TERMINATED){
-        mink::CURRENT_DAEMON->log(
-            mink::LLT_INFO,
-            "Cannot init SCTP server on node [%s], trying again...",
-            get_daemon_id());
+    while (gdts->start_server((local_ip.empty() ? nullptr : local_ip.c_str()),
+                              gdt_port) < 0 && !mink::CURRENT_DAEMON->DAEMON_TERMINATED) {
+        mink::CURRENT_DAEMON->log(mink::LLT_INFO,
+                                 "Cannot init SCTP server on node [%s], trying again...",
+                                  get_daemon_id());
         sleep(2);
     }
 
@@ -311,13 +327,13 @@ void RoutingdDescriptor::init() {
 
     if_thh.detach();
 
-
+    const char *lip = (local_ip.empty() ? nullptr : local_ip.c_str());
     // connect stats with routing
     gdt::GDTClient *gdtc = gdt_stats->get_gdt_session()
-                                    ->connect("127.0.0.1", 
-                                              gdt_port, 
-                                              16, 
-                                              nullptr, 
+                                    ->connect(lip,
+                                              gdt_port,
+                                              16,
+                                              lip,
                                               0);
     if (gdtc != nullptr)
         gdt_stats->setup_client(gdtc);

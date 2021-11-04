@@ -44,6 +44,7 @@ void SysagentdDescriptor::print_help(){
     std::cout << "Options:" << std::endl;
     std::cout << " -?\thelp" << std::endl;
     std::cout << " -i\tunique daemon id" << std::endl;
+    std::cout << " -h\tlocal IPv4 address" << std::endl;
     std::cout << " -c\trouter daemon address (ipv4:port)" << std::endl;
     std::cout << " -p\tplugins path" << std::endl;
     std::cout << " -D\tstart in debug mode" << std::endl;
@@ -68,6 +69,7 @@ void SysagentdDescriptor::init() {
 
 void SysagentdDescriptor::process_args(int argc, char **argv){
     std::regex addr_regex("(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}):(\\d+)");
+    std::regex ipv4_regex("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
     int opt;
     int option_index = 0;
     struct option long_options[] = {{"gdt-streams", required_argument, 0, 0},
@@ -79,7 +81,7 @@ void SysagentdDescriptor::process_args(int argc, char **argv){
         exit(EXIT_FAILURE);
     }
 
-    while ((opt = getopt_long(argc, argv, "?c:i:p:D", long_options,
+    while ((opt = getopt_long(argc, argv, "?c:i:h:p:D", long_options,
                               &option_index)) != -1) {
         switch (opt) {
         // long options
@@ -129,6 +131,19 @@ void SysagentdDescriptor::process_args(int argc, char **argv){
             } else {
                 rtrd_lst.push_back(std::string(optarg));
             }
+            break;
+
+        // local ip
+        case 'h':
+            if (!std::regex_match(optarg, ipv4_regex)) {
+                std::cout << "ERROR: Invalid local IPv4 address format '"
+                          << optarg << "'!" << std::endl;
+                exit(EXIT_FAILURE);
+
+            } else {
+                local_ip.assign(optarg);
+            }
+
             break;
 
         // plugins directory
@@ -240,7 +255,7 @@ static void rtrds_connect(SysagentdDescriptor *d){
         gdt::GDTClient *gdtc = d->gdts->connect(regex_groups[1].str().c_str(),
                                                 atoi(regex_groups[2].str().c_str()), 
                                                 16, 
-                                                nullptr, 
+                                                (d->local_ip.empty() ? nullptr : d->local_ip.c_str()), 
                                                 0);
 
         // setup client for service messages

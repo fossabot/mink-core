@@ -42,6 +42,7 @@ JsonRpcdDescriptor::~JsonRpcdDescriptor(){
 
 void JsonRpcdDescriptor::process_args(int argc, char **argv){
     std::regex addr_regex("(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}):(\\d+)");
+    std::regex ipv4_regex("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
     int opt;
     int option_index = 0;
     struct option long_options[] = {{"gdt-streams", required_argument, 0, 0},
@@ -53,7 +54,7 @@ void JsonRpcdDescriptor::process_args(int argc, char **argv){
         exit(EXIT_FAILURE);
     }
 
-    while ((opt = getopt_long(argc, argv, "?c:i:w:D", long_options,
+    while ((opt = getopt_long(argc, argv, "?c:h:i:w:D", long_options,
                               &option_index)) != -1) {
         switch (opt) {
         // long options
@@ -105,6 +106,19 @@ void JsonRpcdDescriptor::process_args(int argc, char **argv){
             }
             break;
 
+        // local ip
+        case 'h':
+            if (!std::regex_match(optarg, ipv4_regex)) {
+                std::cout << "ERROR: Invalid local IPv4 address format '"
+                          << optarg << "'!" << std::endl;
+                exit(EXIT_FAILURE);
+
+            } else {
+                local_ip.assign(optarg);
+            }
+
+            break;
+
         // ws port
         case 'w':
             if (atoi(optarg) <= 0) {
@@ -139,6 +153,7 @@ void JsonRpcdDescriptor::print_help(){
     std::cout << " -?\thelp" << std::endl;
     std::cout << " -i\tunique daemon id" << std::endl;
     std::cout << " -c\trouter daemon address (ipv4:port)" << std::endl;
+    std::cout << " -h\tlocal IPv4 address" << std::endl;
     std::cout << " -w\tWebSocket server port" << std::endl;
     std::cout << " -D\tstart in debug mode" << std::endl;
     std::cout << std::endl;
@@ -151,29 +166,29 @@ void JsonRpcdDescriptor::print_help(){
         << std::endl;
 }
 
-static void rtrds_connect(JsonRpcdDescriptor *rd){
+static void rtrds_connect(JsonRpcdDescriptor *d){
     // connect to routing daemons
     std::smatch regex_groups;
     std::regex addr_regex("(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}):(\\d+)");
 
 
     // loop routing daemons
-    for (size_t i = 0; i < rd->rtrd_lst.size(); i++) {
+    for (size_t i = 0; i < d->rtrd_lst.size(); i++) {
         // separate IP and PORT
-        if (!std::regex_match(rd->rtrd_lst[i], regex_groups, addr_regex))
+        if (!std::regex_match(d->rtrd_lst[i], regex_groups, addr_regex))
             continue;
         // connect to routing daemon
-        gdt::GDTClient *gdtc = rd->gdts->connect(regex_groups[1].str().c_str(),
-                                                 atoi(regex_groups[2].str().c_str()), 
-                                                 16, 
-                                                 nullptr, 
-                                                 0);
+        gdt::GDTClient *gdtc = d->gdts->connect(regex_groups[1].str().c_str(),
+                                                atoi(regex_groups[2].str().c_str()), 
+                                                16, 
+                                                (d->local_ip.empty() ? nullptr : d->local_ip.c_str()), 
+                                                0);
 
         // setup client for service messages
         if (gdtc!= nullptr) {
-            rd->rtrd_gdtc = gdtc;
+            d->rtrd_gdtc = gdtc;
             // setup service message event handlers
-            rd->gdtsmm->setup_client(gdtc);
+            d->gdtsmm->setup_client(gdtc);
         }
     }
 }

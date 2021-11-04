@@ -77,6 +77,8 @@ public:
     pmap_t dparams;
     // ws port
     uint16_t ws_port;
+    // local IP
+    std::string local_ip;
     // correlation map
     mink_utils::CorrelationMap<JrpcPayload> cmap;
     // grpc payload pool

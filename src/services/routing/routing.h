@@ -54,6 +54,8 @@ public:
     gdt::GDTStatsSession *gdt_stats;
     // GDT port
     int gdt_port;
+    // local IP
+    std::string local_ip;
     // extra options
     mink_utils::VariantParamMap<uint32_t> extra_params;
 
