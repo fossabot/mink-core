@@ -58,7 +58,7 @@ void RoutingdDescriptor::process_args(int argc, char **argv) {
         exit(EXIT_FAILURE);
     } else {
         int opt;
-        while ((opt = getopt_long(argc, argv, "?p:c:i:h:D", long_options,
+        while ((opt = getopt_long(argc, argv, "?p:c:i:h:DN", long_options,
                                   &option_index)) != -1) {
             switch (opt) {
             // long options
@@ -136,6 +136,11 @@ void RoutingdDescriptor::process_args(int argc, char **argv) {
                 set_log_level(mink::LLT_DEBUG);
                 break;
 
+            // interface monitor
+            case 'N':
+                if_monitor = true;
+                break;
+
             default:
                 break;
             }
@@ -167,6 +172,7 @@ void RoutingdDescriptor::print_help() {
     std::cout << " -p\tGDT inbound port" << std::endl;
     std::cout << " -h\tlocal IPv4 address" << std::endl;
     std::cout << " -D\tstart in debug mode" << std::endl;
+    std::cout << " -N\tenable interface monitor" << std::endl;
     std::cout << std::endl;
     std::cout << "GDT Options:" << std::endl;
     std::cout << "=============" << std::endl;
@@ -215,9 +221,14 @@ void RoutingdDescriptor::init() {
                                   get_daemon_id());
         sleep(2);
     }
+    // local ip
+    const char *lip = (local_ip.empty() ? nullptr : local_ip.c_str());
 
     // interface up/down handler
-    std::thread if_thh([this] {
+    std::thread if_thh([this, lip] {
+        // check if inabled
+        if (!if_monitor) return;
+        // setup netlink
         const int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
         if (fd > 0) {
             struct sockaddr_nl sa = {0};
@@ -302,11 +313,13 @@ void RoutingdDescriptor::init() {
                                                          (int)*extra_params.get_param(1), 
                                                          true, 
                                                          (int)*extra_params.get_param(1));
-
+                                
                                 // set routing algorighm
                                 gdts->set_routing_algo(gdt::GDT_RA_WRR);
-                                gdts->start_server(nullptr, gdt_port);
-                                while (gdts->start_server(nullptr, gdt_port) < 0 &&
+                                // start server 
+                                gdts->start_server(lip, gdt_port);
+                                // try again on error
+                                while (gdts->start_server(lip, gdt_port) < 0 &&
                                        !mink::CURRENT_DAEMON->DAEMON_TERMINATED) {
                                     mink::CURRENT_DAEMON->log(mink::LLT_INFO,
                                         "Cannot init SCTP server on node [%s], "
@@ -327,7 +340,6 @@ void RoutingdDescriptor::init() {
 
     if_thh.detach();
 
-    const char *lip = (local_ip.empty() ? nullptr : local_ip.c_str());
     // connect stats with routing
     gdt::GDTClient *gdtc = gdt_stats->get_gdt_session()
                                     ->connect(lip,

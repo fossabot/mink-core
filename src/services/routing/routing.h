@@ -56,6 +56,8 @@ public:
     int gdt_port;
     // local IP
     std::string local_ip;
+    // if monitor
+    bool if_monitor = false;
     // extra options
     mink_utils::VariantParamMap<uint32_t> extra_params;
 
