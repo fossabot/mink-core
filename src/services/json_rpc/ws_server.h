@@ -16,6 +16,7 @@
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/buffers_iterator.hpp>
+#include <boost/optional.hpp>
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
@@ -31,7 +32,9 @@ namespace websocket = beast::websocket;
 namespace net = boost::asio;
 using tcp = boost::asio::ip::tcp;
 
-// WebSockets session
+/**********************/
+/* WebSockets session */
+/**********************/
 class WsSession : public std::enable_shared_from_this<WsSession> {
 public:
     explicit WsSession(tcp::socket&& socket);
@@ -39,9 +42,10 @@ public:
     ~WsSession() = default;
     const WsSession &operator=(const WsSession &o) = delete;
 
-    void run();
-    void on_run();
     void on_accept(beast::error_code ec);
+    template<class Body, class Allocator> 
+    void do_accept(http::request<Body, http::basic_fields<Allocator>> req);
+
     void do_read();
     void on_read(beast::error_code ec, std::size_t bt);
     void on_write(beast::error_code ec, std::size_t bt);
@@ -55,13 +59,42 @@ private:
     beast::flat_buffer buffer_;
 };
 
-// WebSockets connection listener
-class WsListener : public std::enable_shared_from_this<WsListener> {
+/***************/
+/* HttpSession */
+/***************/
+class HttpSession : public std::enable_shared_from_this<HttpSession> {
 public:
-    WsListener(net::io_context &ioc, tcp::endpoint endpoint);
-    WsListener(const WsListener &o) = delete;
-    ~WsListener() = default;
-    const WsListener &operator=(const WsListener &o) = delete;
+    explicit HttpSession(tcp::socket&& socket,
+                         std::shared_ptr<std::string const> const &droot);
+    HttpSession(const HttpSession &o) = delete;
+    ~HttpSession() = default;
+    const HttpSession &operator=(const HttpSession &o) = delete;
+
+    void run();
+
+private:
+    void do_read();
+    void on_read(beast::error_code ec, std::size_t bt);
+    void on_write(beast::error_code ec, std::size_t bt);
+    void do_close();
+
+    beast::tcp_stream stream_;
+    beast::flat_buffer buffer_;
+    std::shared_ptr<std::string const> droot_;
+    boost::optional<http::request_parser<http::string_body>> parser_;
+};
+
+/***********************/
+/* Connection listener */
+/***********************/
+class Listener : public std::enable_shared_from_this<Listener> {
+public:
+    Listener(net::io_context &ioc, 
+             tcp::endpoint endpoint,
+             std::shared_ptr<std::string const> const &droot);
+    Listener(const Listener &o) = delete;
+    ~Listener() = default;
+    const Listener &operator=(const Listener &o) = delete;
 
     void run();
 
@@ -71,6 +104,7 @@ private:
 
     net::io_context &ioc_;
     tcp::acceptor acceptor_;
+    std::shared_ptr<std::string const> droot_;
 };
 
 #endif /* ifndef MINK_WS_SERVER_H */

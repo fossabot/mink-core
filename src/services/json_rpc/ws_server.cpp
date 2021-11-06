@@ -20,7 +20,6 @@ public:
     EVUserCB() = default;
     EVUserCB(const EVUserCB &o) = delete;
     EVUserCB &operator=(const EVUserCB &o) = delete;
-    ~EVUserCB() override {std::cout << "==========+FREEING ===============" << std::endl;  }
 
     // param map for non-variant params
     std::vector<gdt::ServiceParam*> pmap;
@@ -31,19 +30,13 @@ static void fail(beast::error_code ec, char const *what) {
     std::cerr << what << ": " << ec.message() << "\n";
 }
 
+/**********************/
+/* WebSockets session */
+/**********************/
 WsSession::WsSession(tcp::socket &&socket) : ws_(std::move(socket)) {}
 
-void WsSession::run(){
-    // We need to be executing within a strand to perform async operations
-    // on the I/O objects in this session. Although not strictly necessary
-    // for single-threaded contexts, this example code is written to be
-    // thread-safe by default.
-    net::dispatch(ws_.get_executor(),
-                  beast::bind_front_handler(&WsSession::on_run, 
-                                            shared_from_this()));
-}
-
-void WsSession::on_run(){
+template<class Body, class Allocator> 
+void WsSession::do_accept(http::request<Body, http::basic_fields<Allocator>> req){
     // Set suggested timeout settings for the websocket
     ws_.set_option(websocket::stream_base::timeout::suggested(beast::role_type::server));
 
@@ -52,11 +45,12 @@ void WsSession::on_run(){
         websocket::stream_base::decorator([](websocket::response_type &res) {
             res.set(http::field::server,
                     std::string(BOOST_BEAST_VERSION_STRING) +
-                        " websocket-server-async");
+                        " mINK server");
         }));
+
     // Accept the websocket handshake
-    ws_.async_accept(beast::bind_front_handler(&WsSession::on_accept, 
-                                               shared_from_this()));
+    ws_.async_accept(req, beast::bind_front_handler(&WsSession::on_accept,
+                                                    shared_from_this()));
 }
 
 void WsSession::on_accept(beast::error_code ec){
@@ -341,8 +335,112 @@ void WsSession::on_write(beast::error_code ec, std::size_t bt){
 }
 
 
-WsListener::WsListener(net::io_context &ioc, tcp::endpoint endpoint) : ioc_(ioc), 
-                                                                       acceptor_(ioc) {
+/***************/
+/* HttpSession */
+/***************/
+HttpSession::HttpSession(tcp::socket &&socket,
+                         std::shared_ptr<std::string const> const &droot)
+    : stream_(std::move(socket)), 
+      droot_(droot) {}
+
+void HttpSession::run(){
+    // We need to be executing within a strand to perform async operations
+    // on the I/O objects in this session. Although not strictly necessary
+    // for single-threaded contexts, this example code is written to be
+    // thread-safe by default.
+    net::dispatch(stream_.get_executor(),
+                  beast::bind_front_handler(&HttpSession::do_read,
+                                            this->shared_from_this()));
+}
+
+void HttpSession::do_read(){
+    // Construct a new parser for each message
+    parser_.emplace();
+
+    // Apply a reasonable limit to the allowed size
+    // of the body in bytes to prevent abuse.
+    parser_->body_limit(10000);
+
+    // Set the timeout.
+    stream_.expires_after(std::chrono::seconds(30));
+
+    // Read a request using the parser-oriented interface
+    http::async_read(stream_, 
+                     buffer_, 
+                     *parser_,
+                     beast::bind_front_handler(&HttpSession::on_read, 
+                                               shared_from_this()));
+
+}
+
+void HttpSession::on_read(beast::error_code ec, std::size_t bt){
+    boost::ignore_unused(bt);
+
+    // This means they closed the connection
+    if (ec == http::error::end_of_stream)
+        return do_close();
+
+    if (ec)
+        return fail(ec, "read");
+
+    // See if it is a WebSocket Upgrade
+    if (websocket::is_upgrade(parser_->get())) {
+        // auth
+        auto req = parser_->get();
+        const boost::string_view auth = req[http::field::authorization];
+        // Auth header missing
+        if(auth.empty()){
+            return do_close();
+
+        // Auth header found, verify
+        }else{
+            // TODO connect with DB
+
+        }
+        // Create a websocket session, transferring ownership
+        // of both the socket and the HTTP request.
+        std::make_shared<WsSession>(stream_.release_socket())->do_accept(parser_->release());
+        return;
+    }
+
+    // websockets only
+    return do_close();
+}
+
+void HttpSession::on_write(beast::error_code ec, std::size_t bt){
+    boost::ignore_unused(bt);
+
+    if (ec)
+        return fail(ec, "write");
+
+    if (close) {
+        // This means we should close the connection, usually because
+        // the response indicated the "Connection: close" semantic.
+        return do_close();
+    }
+
+    // Read another request
+    do_read();
+}
+
+void HttpSession::do_close(){
+    // Send a TCP shutdown
+    beast::error_code ec;
+    stream_.socket().shutdown(tcp::socket::shutdown_send, ec);
+
+    // At this point the connection is closed gracefully
+}
+
+
+/***********************/
+/* Connection listener */
+/***********************/
+Listener::Listener(net::io_context &ioc, 
+                   tcp::endpoint endpoint,
+                   std::shared_ptr<std::string const> const &droot) : ioc_(ioc), 
+                                                                      acceptor_(ioc),
+                                                                      droot_(droot) {
+                                                                    
     beast::error_code ec;
 
     // Open the acceptor
@@ -374,23 +472,28 @@ WsListener::WsListener(net::io_context &ioc, tcp::endpoint endpoint) : ioc_(ioc)
     }
 }
 
-void WsListener::run(){
-    do_accept();
+
+// start accepting connections
+void Listener::run(){
+    net::dispatch(acceptor_.get_executor(),
+                  beast::bind_front_handler(&Listener::do_accept,
+                                            this->shared_from_this()));
+
 }
 
-void WsListener::do_accept(){
+void Listener::do_accept(){
     // The new connection gets its own strand
     acceptor_.async_accept(net::make_strand(ioc_),
-                           beast::bind_front_handler(&WsListener::on_accept, 
+                           beast::bind_front_handler(&Listener::on_accept, 
                                                      shared_from_this()));
 }
 
-void WsListener::on_accept(beast::error_code ec, tcp::socket socket){
+void Listener::on_accept(beast::error_code ec, tcp::socket socket){
     if (ec) {
         fail(ec, "accept");
     } else {
         // Create the session and run it
-        std::make_shared<WsSession>(std::move(socket))->run();
+        std::make_shared<HttpSession>(std::move(socket), droot_)->run();
     }
 
     // Accept another connection

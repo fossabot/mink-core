@@ -236,12 +236,15 @@ void JsonRpcdDescriptor::init_gdt(){
 void JsonRpcdDescriptor::init_wss(uint16_t port){
     auto const addr = net::ip::make_address("0.0.0.0");
     auto const th_nr = 1;
+    auto const droot = std::make_shared<std::string>("/");
 
     // The io_context is required for all I/O
     net::io_context ioc{th_nr};
 
     // Create and launch a listening port
-    std::make_shared<WsListener>(ioc, tcp::endpoint{addr, port})->run();
+    std::make_shared<Listener>(ioc,
+                               tcp::endpoint{addr, port},
+                               droot)->run();
     // Run the I/O service on the requested number of threads
     //std::vector<std::thread> v;
     //v.reserve(th_nr);
