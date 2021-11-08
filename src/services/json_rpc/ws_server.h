@@ -30,6 +30,7 @@ namespace beast = boost::beast;
 namespace http = beast::http;
 namespace websocket = beast::websocket;
 namespace net = boost::asio;
+namespace base64 = boost::beast::detail::base64;
 using tcp = boost::asio::ip::tcp;
 
 /**********************/
@@ -53,10 +54,13 @@ public:
     bool gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSession> ws, uint8_t *guid);
     beast::flat_buffer &get_buffer();
     websocket::stream<beast::tcp_stream> &get_tcp_stream();
+    void set_credentials(const std::string &usr, const std::string &pwd);
 
 private:
     websocket::stream<beast::tcp_stream> ws_;
     beast::flat_buffer buffer_;
+    std::string usr_;
+    std::string pwd_;
 };
 
 /***************/

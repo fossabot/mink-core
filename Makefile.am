@@ -60,7 +60,8 @@ noinst_LTLIBRARIES = libasn1.la \
                      libstats.la \
                      libminkutils.la \
                      libminkdynamic.la \
-                     libminkplugin.la
+                     libminkplugin.la \
+                     libminkdb.la
 
 if ENABLE_GRPC
 noinst_LTLIBRARIES += libgdtgrpc.la
@@ -135,6 +136,7 @@ jrpcd_LDADD = libdaemon.la \
               libgdtutils.la \
               libasn1.la \
               libjsonrpc.la \
+              libminkdb.la \
               ${NCURSES_LIBS} \
               -lcap
 endif
@@ -155,6 +157,7 @@ sysagentd_LDADD = libdaemon.la \
                   libgdtutils.la \
                   libasn1.la \
                   libminkplugin.la \
+                  libminkdb.la \
                   ${NCURSES_LIBS} \
                   -lcap
 endif     
@@ -326,6 +329,10 @@ libgdt_la_CPPFLAGS = $(COMMON_INCLUDES)
 libgdt_la_LIBADD = libgdtdef.la \
                    libgdtutils.la \
                    ${SCTP_LIBS}
+
+libminkdb_la_SOURCES = src/utils/mink_sqlite.cpp
+libminkdb_la_CPPFLAGS = $(COMMON_INCLUDES)
+libminkdb_la_LIBADD = ${SQLITE_LIBS}
 
 # MINK configd plugin
 if ENABLE_CONFIGD

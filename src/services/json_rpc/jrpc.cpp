@@ -54,7 +54,7 @@ void JsonRpcdDescriptor::process_args(int argc, char **argv){
         exit(EXIT_FAILURE);
     }
 
-    while ((opt = getopt_long(argc, argv, "?c:h:i:w:D", long_options,
+    while ((opt = getopt_long(argc, argv, "?c:h:i:w:s:D", long_options,
                               &option_index)) != -1) {
         switch (opt) {
         // long options
@@ -128,6 +128,16 @@ void JsonRpcdDescriptor::process_args(int argc, char **argv){
             ws_port = atoi(optarg);
             break;
 
+        // sqlite database
+        case 's':
+            try {
+                dbm.connect(optarg);
+            } catch (std::invalid_argument &e) {
+                std::cout << "ERROR: Invalid db filename!" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            break;
+
         // debug mode
         case 'D':
             set_log_level(mink::LLT_DEBUG);
@@ -155,6 +165,7 @@ void JsonRpcdDescriptor::print_help(){
     std::cout << " -c\trouter daemon address (ipv4:port)" << std::endl;
     std::cout << " -h\tlocal IPv4 address" << std::endl;
     std::cout << " -w\tWebSocket server port" << std::endl;
+    std::cout << " -s\tpath to sqlite database file" << std::endl;
     std::cout << " -D\tstart in debug mode" << std::endl;
     std::cout << std::endl;
     std::cout << "GDT Options:" << std::endl;

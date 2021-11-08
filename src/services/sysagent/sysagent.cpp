@@ -47,6 +47,7 @@ void SysagentdDescriptor::print_help(){
     std::cout << " -h\tlocal IPv4 address" << std::endl;
     std::cout << " -c\trouter daemon address (ipv4:port)" << std::endl;
     std::cout << " -p\tplugins path" << std::endl;
+    std::cout << " -s\tpath to sqlite database file" << std::endl;
     std::cout << " -D\tstart in debug mode" << std::endl;
     std::cout << std::endl;
     std::cout << "GDT Options:" << std::endl;
@@ -81,7 +82,7 @@ void SysagentdDescriptor::process_args(int argc, char **argv){
         exit(EXIT_FAILURE);
     }
 
-    while ((opt = getopt_long(argc, argv, "?c:i:h:p:D", long_options,
+    while ((opt = getopt_long(argc, argv, "?c:i:h:p:s:D", long_options,
                               &option_index)) != -1) {
         switch (opt) {
         // long options
@@ -149,6 +150,16 @@ void SysagentdDescriptor::process_args(int argc, char **argv){
         // plugins directory
         case 'p':
             plg_dir.assign(optarg);
+            break;
+
+        // sqlite database
+        case 's':
+            try {
+                dbm.connect(optarg);
+            } catch (std::invalid_argument &e) {
+                std::cout << "ERROR: Invalid db filename!" << std::endl;
+                exit(EXIT_FAILURE);
+            }
             break;
 
         // debug mode

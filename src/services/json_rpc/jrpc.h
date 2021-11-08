@@ -25,6 +25,7 @@
 #include <mink_utils.h>
 #include <gdt_utils.h>
 #include <gdt_stats.h>
+#include <mink_sqlite.h>
 
 // daemon name and description
 constexpr const char *DAEMON_TYPE = "jrpcd";
@@ -81,8 +82,9 @@ public:
     std::string local_ip;
     // correlation map
     mink_utils::CorrelationMap<JrpcPayload> cmap;
-    // grpc payload pool
-    //memory::Pool<JrpcPayload, true> cpool;
+    // db manager
+    mink_db::SqliteManager dbm;
+    
 
 #ifdef ENABLE_CONFIGD
     int init_cfg(bool _proc_cfg) const;

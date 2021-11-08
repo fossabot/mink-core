@@ -71,13 +71,13 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
     auto dd = static_cast<SysagentdDescriptor*>(mink::CURRENT_DAEMON);
     gdt::GDTStream* gdt_stream = args->get<gdt::GDTStream>(gdt::GDT_CB_INPUT_ARGS, 
                                                            gdt::GDT_CB_ARG_STREAM);
-    // check for missing params
+    // look for missing params
     if (smsg->missing_params) {
         // TODO stats
         return;
     }
 
-    // check for incomplete msg
+    // look for incomplete msg
     if (!smsg->is_complete()) {
         // TODO stats
         return;
@@ -95,26 +95,52 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
 
     std::cout << "Service ID found!!!" << std::endl;
 
-    // check for source type
+    // look for source type
     const mink_utils::VariantParam *vp_src_type = smsg->vpget(asn1::ParameterType::_pt_mink_daemon_type);
     if (vp_src_type == nullptr) return;
 
-    // check for source id
+    // look for source id
     const mink_utils::VariantParam *vp_src_id = smsg->vpget(asn1::ParameterType::_pt_mink_daemon_id);
     if (vp_src_id == nullptr) return;
 
     std::cout << "Source daemon found!!!" << (char *)*vp_src_type << ":" << (char *)*vp_src_id <<std::endl;
-    // check for guid
+    // look for guid
     const mink_utils::VariantParam *vp_guid = smsg->vpget(asn1::ParameterType::_pt_mink_guid);
     if(!vp_guid) return;
 
-    // check for cmd id
+    // look for cmd id
     const mink_utils::VariantParam *vp_cmd_id = smsg->vpget(asn1::ParameterType::_pt_mink_command_id);
     if(!vp_cmd_id) return;
 
+    // look for username
+    const mink_utils::VariantParam *vp_usr = smsg->vpget(asn1::ParameterType::_pt_mink_auth_id);
+    if(!vp_usr) return;
 
+    // look for password hash
+    const mink_utils::VariantParam *vp_pwd = smsg->vpget(asn1::ParameterType::_pt_mink_auth_password);
+    if(!vp_pwd) return;
 
+    // authenticate user
+    std::string usr(static_cast<char *>(*vp_usr));
+    std::string pwd(static_cast<char *>(*vp_pwd));
+    if (!dd->dbm.user_auth(usr, pwd)){
+        std::cout << "Invalid credentials!" << std::endl;
+        return;
+    }
+
+    // check if cmd id is valid for this user
+    if(!dd->dbm.cmd_auth(static_cast<int>(*vp_cmd_id), usr)){
+        std::cout << "Invalid cmd id credentials!" << std::endl;
+        return;
+    }
+
+    // validate command specific methods
+    if(!dd->dbm.cmd_specific_auth(smsg->vpmap, usr)){
+        std::cout << "Invalid cmd specific id credentials!" << std::endl;
+        return;
+    }
     
+
     std::cout << "GUIDD found!!!" << std::endl;
 
     // save source daemon address 

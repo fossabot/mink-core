@@ -90,6 +90,12 @@ if test "x$enable_sysagent" != "xno"; then
                  [readproc], 
                  [AC_SUBST([PROCPS_LIBS], ["-lprocps"])],
                  [AC_MSG_ERROR([procps library not found!])])
+
+    AC_CHECK_LIB([sqlite3], 
+                 [sqlite3_open], 
+                 [AC_SUBST([SQLITE_LIBS], ["-lsqlite3"])],
+                 [AC_MSG_ERROR([sqlite3 library not found!])])
+
 fi
 
 # gdt trapc

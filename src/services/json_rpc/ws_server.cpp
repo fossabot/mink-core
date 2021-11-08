@@ -269,6 +269,12 @@ bool WsSession::gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSessio
     msg->vpmap.set_cstr(asn1::ParameterType::_pt_mink_daemon_id,
                         dd->get_daemon_id());
 
+    // set credentials
+    msg->vpmap.set_cstr(asn1::ParameterType::_pt_mink_auth_id,
+                        usr_.c_str());
+    msg->vpmap.set_cstr(asn1::ParameterType::_pt_mink_auth_password,
+                        pwd_.c_str());
+
     // create payload object for correlation (grpc <-> gdt)
     JrpcPayload pld;
     
@@ -319,6 +325,11 @@ beast::flat_buffer &WsSession::get_buffer(){
 
 websocket::stream<beast::tcp_stream> &WsSession::get_tcp_stream(){
     return ws_;
+}
+
+void WsSession::set_credentials(const std::string &usr, const std::string &pwd){
+    usr_.assign(usr);
+    pwd_.assign(pwd);
 }
 
 void WsSession::on_write(beast::error_code ec, std::size_t bt){
@@ -373,6 +384,49 @@ void HttpSession::do_read(){
 
 }
 
+static std::tuple<std::string, std::string, bool> user_auth(boost::string_view &auth_hdr){
+    // check for "Basic"
+    std::string::size_type n = auth_hdr.find("Basic");
+    if (n == std::string::npos)
+        return std::make_tuple("", "", false);
+    // skip "Basic "
+    auth_hdr.remove_prefix(6);
+    // decode base64
+    const std::size_t sz = base64::decoded_size(auth_hdr.size()); 
+    std::vector<char> arr(sz);
+    base64::decode(arr.data(), auth_hdr.data(), auth_hdr.size());
+
+    // extract user and pwd hash 
+    std::string user;
+    std::string pwd;
+
+    // split header
+    for (auto it = arr.cbegin(); it != arr.cend(); ++it) {
+        if (*it == ':') {
+            // username
+            user.assign(arr.cbegin(), it);
+            // skip ':'
+            ++it;
+            // sanity check
+            if (it == arr.cend())
+                return std::make_tuple("", "", false);
+            // pwd hash
+            pwd.assign(it, arr.cend());
+        }
+    }
+    // pwd sanity check
+    if (pwd.size() < 6)
+        return std::make_tuple("", "", false);
+
+    // remove "\r\n"
+    pwd.resize(pwd.size() - 2);
+
+    // find user in db and auth
+    auto dd = static_cast<JsonRpcdDescriptor*>(mink::CURRENT_DAEMON);
+    // return credentials
+    return std::make_tuple(user, pwd, dd->dbm.user_auth(user, pwd));
+}
+
 void HttpSession::on_read(beast::error_code ec, std::size_t bt){
     boost::ignore_unused(bt);
 
@@ -385,22 +439,30 @@ void HttpSession::on_read(beast::error_code ec, std::size_t bt){
 
     // See if it is a WebSocket Upgrade
     if (websocket::is_upgrade(parser_->get())) {
+        auto dd = static_cast<JsonRpcdDescriptor*>(mink::CURRENT_DAEMON);
         // auth
         auto req = parser_->get();
-        const boost::string_view auth = req[http::field::authorization];
+        boost::string_view auth_hdr = req[http::field::authorization];
         // Auth header missing
-        if(auth.empty()){
+        if(auth_hdr.empty()){
             return do_close();
 
         // Auth header found, verify
         }else{
-            // TODO connect with DB
+            // connect with DB
+            auto ua = user_auth(auth_hdr);
+            if (!std::get<2>(ua))
+                return do_close();
 
+            // Create a websocket session, transferring ownership
+            // of both the socket and the HTTP request.
+            auto ws = std::make_shared<WsSession>(stream_.release_socket());
+            // save session credentials 
+            ws->set_credentials(std::get<0>(ua), std::get<1>(ua));
+            // run session 
+            ws->do_accept(parser_->release());
+            return;
         }
-        // Create a websocket session, transferring ownership
-        // of both the socket and the HTTP request.
-        std::make_shared<WsSession>(stream_.release_socket())->do_accept(parser_->release());
-        return;
     }
 
     // websockets only

@@ -23,6 +23,7 @@
 #include <gdt.h>
 #include <gdt_stats.h>
 #include <gdt_utils.h>
+#include <mink_sqlite.h>
 #include <sstream>
 #include "events.h"
 
@@ -88,6 +89,8 @@ public:
     pmap_t dparams;
     // plugin manager
     mink_utils::PluginManager plg_mngr;
+    // db manager
+    mink_db::SqliteManager dbm;
 };
 
 
