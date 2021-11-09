@@ -828,7 +828,23 @@ namespace mink_utils {
 
         }
 
-
+        /**
+         * Get param
+         * @param[in]   id      key
+         * @return      Pointer to variant param or nullptr if not found
+         */
+        const VariantParam *get_param(TID id,
+                                      uint32_t index = 0,
+                                      uint32_t fragment = 0,
+                                      uint32_t context = 0) const {
+            auto it = params.find(ParamTuple<TID>(id,
+                                                  index,
+                                                  fragment,
+                                                  context));
+            if (it != params.cend())
+                return &it->second;
+            return nullptr;
+        }
 
         /**
          * Get param
@@ -839,13 +855,11 @@ namespace mink_utils {
                                 uint32_t index = 0,
                                 uint32_t fragment = 0, 
                                 uint32_t context = 0) {
-            it_t it = params.find(ParamTuple<TID>(id, 
-                                                  index, 
-                                                  fragment, 
-                                                  context));
-            if (it != params.end())
-                return &it->second;
-            return nullptr;
+            return 
+                const_cast<VariantParam *>(const_cast<const VariantParamMap *>(this)->get_param(id, 
+                                                                                                index, 
+                                                                                                fragment, 
+                                                                                                context));
         }
 
         /**
