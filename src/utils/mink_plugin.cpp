@@ -24,6 +24,7 @@ mink_utils::PluginManager::~PluginManager(){
         pd->termh(this, pd);
         // free mem
         dlclose(pd->handle);
+        delete pd;
         return true;
     });
 }
