@@ -123,23 +123,26 @@ void EVSrvcMsgRecv::run(gdt::GDTCallbackArgs *args){
     // authenticate user
     std::string usr(static_cast<char *>(*vp_usr));
     std::string pwd(static_cast<char *>(*vp_pwd));
-    if (!dd->dbm.user_auth(usr, pwd)){
+    // user credentials
+    auto c = dd->dbm.user_auth(usr, pwd);
+    if (!c.first){
         std::cout << "Invalid credentials!" << std::endl;
         return;
     }
+    // skip other validations for "special" users (flags > 0)
+    if (c.second == 0) {
+        // check if cmd id is valid for this user
+        if (!dd->dbm.cmd_auth(static_cast<int>(*vp_cmd_id), usr)) {
+            std::cout << "Invalid cmd id credentials!" << std::endl;
+            return;
+        }
 
-    // check if cmd id is valid for this user
-    if(!dd->dbm.cmd_auth(static_cast<int>(*vp_cmd_id), usr)){
-        std::cout << "Invalid cmd id credentials!" << std::endl;
-        return;
+        // validate command specific methods
+        if (!dd->dbm.cmd_specific_auth(smsg->vpmap, usr)) {
+            std::cout << "Invalid cmd specific id credentials!" << std::endl;
+            return;
+        }
     }
-
-    // validate command specific methods
-    if(!dd->dbm.cmd_specific_auth(smsg->vpmap, usr)){
-        std::cout << "Invalid cmd specific id credentials!" << std::endl;
-        return;
-    }
-    
 
     std::cout << "GUIDD found!!!" << std::endl;
 

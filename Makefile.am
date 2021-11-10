@@ -331,7 +331,8 @@ libgdt_la_LIBADD = libgdtdef.la \
                    ${SCTP_LIBS}
 
 libminkdb_la_SOURCES = src/utils/mink_sqlite.cpp
-libminkdb_la_CPPFLAGS = $(COMMON_INCLUDES)
+libminkdb_la_CPPFLAGS = $(COMMON_INCLUDES) \
+                        -Isrc/proto
 libminkdb_la_LIBADD = ${SQLITE_LIBS}
 
 # MINK configd plugin

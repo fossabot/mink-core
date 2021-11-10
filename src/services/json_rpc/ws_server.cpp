@@ -11,6 +11,8 @@
 #include <iostream>
 #include "ws_server.h"
 #include "jrpc.h"
+#include <boost/algorithm/string/trim.hpp>
+#include <boost/range/as_array.hpp>
 
 /***********************/
 /* extra user callback */
@@ -327,9 +329,12 @@ websocket::stream<beast::tcp_stream> &WsSession::get_tcp_stream(){
     return ws_;
 }
 
-void WsSession::set_credentials(const std::string &usr, const std::string &pwd){
+void WsSession::set_credentials(const std::string &usr, 
+                                const std::string &pwd, 
+                                const int usr_flags){
     usr_.assign(usr);
     pwd_.assign(pwd);
+    usr_flags_ = usr_flags;
 }
 
 void WsSession::on_write(beast::error_code ec, std::size_t bt){
@@ -384,15 +389,19 @@ void HttpSession::do_read(){
 
 }
 
-static std::tuple<std::string, std::string, bool> user_auth(boost::string_view &auth_hdr){
+static std::tuple<std::string, std::string, bool, int> user_auth(boost::string_view &auth_hdr){
     // check for "Basic"
     std::string::size_type n = auth_hdr.find("Basic");
     if (n == std::string::npos)
-        return std::make_tuple("", "", false);
+        return std::make_tuple("", "", false, 0);
     // skip "Basic "
     auth_hdr.remove_prefix(6);
+    // sanity check
+    if (auth_hdr.size() < 10)
+        return std::make_tuple("", "", false, 0);
+
     // decode base64
-    const std::size_t sz = base64::decoded_size(auth_hdr.size()); 
+    const std::size_t sz = base64::decoded_size(auth_hdr.size());
     std::vector<char> arr(sz);
     base64::decode(arr.data(), auth_hdr.data(), auth_hdr.size());
 
@@ -409,22 +418,22 @@ static std::tuple<std::string, std::string, bool> user_auth(boost::string_view &
             ++it;
             // sanity check
             if (it == arr.cend())
-                return std::make_tuple("", "", false);
+                return std::make_tuple("", "", false, 0);
             // pwd hash
             pwd.assign(it, arr.cend());
+            boost::trim_right_if(pwd, boost::is_any_of(boost::as_array("\x0d\x0a\x00")));
         }
     }
     // pwd sanity check
     if (pwd.size() < 6)
-        return std::make_tuple("", "", false);
-
-    // remove "\r\n"
-    pwd.resize(pwd.size() - 2);
+        return std::make_tuple("", "", false, 0);
 
     // find user in db and auth
     auto dd = static_cast<JsonRpcdDescriptor*>(mink::CURRENT_DAEMON);
+    // get credentials
+    auto c = dd->dbm.user_auth(user, pwd);
     // return credentials
-    return std::make_tuple(user, pwd, dd->dbm.user_auth(user, pwd));
+    return std::make_tuple(user, pwd, c.first, c.second);
 }
 
 void HttpSession::on_read(beast::error_code ec, std::size_t bt){
@@ -458,7 +467,7 @@ void HttpSession::on_read(beast::error_code ec, std::size_t bt){
             // of both the socket and the HTTP request.
             auto ws = std::make_shared<WsSession>(stream_.release_socket());
             // save session credentials 
-            ws->set_credentials(std::get<0>(ua), std::get<1>(ua));
+            ws->set_credentials(std::get<0>(ua), std::get<1>(ua), std::get<2>(ua));
             // run session 
             ws->do_accept(parser_->release());
             return;

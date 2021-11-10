@@ -16,10 +16,12 @@
 #include <mink_utils.h>
 
 namespace mink_db {
+    // vpmap alias
     using vpmap = mink_utils::PooledVPMap<uint32_t>;
 
+    // sqlite query type
     enum class QueryType {
-        USER_AUTH,
+        USER_AUTH = 0,
         USER_ADD,
         USER_DEL,
         USER_CMD_DEL,
@@ -27,9 +29,27 @@ namespace mink_db {
         USER_CMD_SPECIFIC_AUTH
     };
 
+    // Command specific auth base class
+    class CmdSpecificAuth {
+    public:
+        CmdSpecificAuth() = default;
+        ~CmdSpecificAuth() = default; 
+        CmdSpecificAuth(const CmdSpecificAuth &o) = delete;
+        CmdSpecificAuth &operator=(const CmdSpecificAuth &o) = delete;
+        // cmd handlers implemented in derived classes
+        virtual bool do_auth(sqlite3 *db, const vpmap &vp) = 0;
+    };
+
+    // CMD_UBUS_CALL (7) cmd specific auth class
+    class CmdUbusAuth : public CmdSpecificAuth {
+    public:
+        bool do_auth(sqlite3 *db, const vpmap &vp);
+    };
+
+    // sqlite manager
     class SqliteManager {
     public:
-        SqliteManager() = default;
+        SqliteManager();
         explicit SqliteManager(const std::string &db_f);
         ~SqliteManager();
         SqliteManager(const SqliteManager &o) = delete;
@@ -37,7 +57,7 @@ namespace mink_db {
 
         bool cmd_auth(const int cmd_id, const std::string &u);
         bool cmd_specific_auth(const vpmap &vp, const std::string &u);
-        bool user_auth(const std::string &u, const std::string &p);
+        std::pair<bool, int> user_auth(const std::string &u, const std::string &p);
         void connect(const std::string &db_f);
 
         // static constants
@@ -49,7 +69,10 @@ namespace mink_db {
         static const char *SQL_USER_CMD_SPECIFIC_AUTH;
 
     private:
+        void create_cmd_spec_hndlrs();
+
         sqlite3 *db = nullptr;
+        std::map<int, CmdSpecificAuth *> cmd_spec_auth_map;
     };
 }
 

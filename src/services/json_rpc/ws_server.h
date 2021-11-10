@@ -54,13 +54,14 @@ public:
     bool gdt_push(const json_rpc::JsonRpc &jrpc, std::shared_ptr<WsSession> ws, uint8_t *guid);
     beast::flat_buffer &get_buffer();
     websocket::stream<beast::tcp_stream> &get_tcp_stream();
-    void set_credentials(const std::string &usr, const std::string &pwd);
+    void set_credentials(const std::string &usr, const std::string &pwd, const int usr_flags);
 
 private:
     websocket::stream<beast::tcp_stream> ws_;
     beast::flat_buffer buffer_;
     std::string usr_;
     std::string pwd_;
+    int usr_flags_;
 };
 
 /***************/
