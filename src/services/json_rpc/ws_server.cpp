@@ -389,17 +389,43 @@ void HttpSession::do_read(){
 
 }
 
-static std::tuple<std::string, std::string, bool, int> user_auth(boost::string_view &auth_hdr){
-    // check for "Basic"
-    std::string::size_type n = auth_hdr.find("Basic");
-    if (n == std::string::npos)
-        return std::make_tuple("", "", false, 0);
-    // skip "Basic "
-    auth_hdr.remove_prefix(6);
-    // sanity check
-    if (auth_hdr.size() < 10)
-        return std::make_tuple("", "", false, 0);
+bool user_auth_prepare(boost::string_view &auth_str, int type){
+    // Header
+    if(type == 0){
+        // check for "Basic"
+        std::string::size_type n = auth_str.find("Basic");
+        if (n == std::string::npos)
+            return false;
 
+        // skip "Basic "
+        auth_str.remove_prefix(6);
+        // sanity check
+        if (auth_str.size() < 10)
+            return false;
+
+    // URL param
+    }else if(type == 1){
+        // check for "/?auth="
+        std::string::size_type n = auth_str.find("/?auth=");
+        if (n == std::string::npos)
+            return false;
+
+        // skip "/?auth="
+        auth_str.remove_prefix(7);
+        // sanity check
+        if (auth_str.size() < 10)
+            return false;
+
+    // unknown
+    } else
+        return false;
+
+    // token found
+    return true;
+}
+
+
+static std::tuple<std::string, std::string, bool, int> user_auth(boost::string_view &auth_hdr){
     // decode base64
     const std::size_t sz = base64::decoded_size(auth_hdr.size());
     std::vector<char> arr(sz);
@@ -452,26 +478,45 @@ void HttpSession::on_read(beast::error_code ec, std::size_t bt){
         // auth
         auto req = parser_->get();
         boost::string_view auth_hdr = req[http::field::authorization];
-        // Auth header missing
-        if(auth_hdr.empty()){
-            return do_close();
+        boost::string_view req_m = req.target();
 
-        // Auth header found, verify
-        }else{
+        // user auth info
+        std::tuple<std::string, std::string, bool, int> ua;    
+        // Header
+        if(!auth_hdr.empty()){
+            if (!user_auth_prepare(auth_hdr, 0))
+                return do_close();
+
             // connect with DB
-            auto ua = user_auth(auth_hdr);
+            ua = user_auth(auth_hdr);
             if (!std::get<2>(ua))
                 return do_close();
 
-            // Create a websocket session, transferring ownership
-            // of both the socket and the HTTP request.
-            auto ws = std::make_shared<WsSession>(stream_.release_socket());
-            // save session credentials 
-            ws->set_credentials(std::get<0>(ua), std::get<1>(ua), std::get<2>(ua));
-            // run session 
-            ws->do_accept(parser_->release());
-            return;
-        }
+        // URL param
+        } else if (!req_m.empty()) {
+            if (!user_auth_prepare(req_m, 1))
+                return do_close();
+
+            // connect with DB
+            ua = user_auth(req_m);
+            if (!std::get<2>(ua))
+                return do_close();
+
+        // unknown
+        } else
+            return do_close();
+
+        /*************************/
+        /* Handover to WebSocket */
+        /*************************/
+        // Create a websocket session, transferring ownership
+        // of both the socket and the HTTP request.
+        auto ws = std::make_shared<WsSession>(stream_.release_socket());
+        // save session credentials
+        ws->set_credentials(std::get<0>(ua), std::get<1>(ua), std::get<2>(ua));
+        // run session
+        ws->do_accept(parser_->release());
+        return;
     }
 
     // websockets only
