@@ -116,6 +116,8 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
         sz = net::buffer_copy(buffer_.prepare(ws_rpl.size()),
                               net::buffer(ws_rpl));
         send_buff(buffer_, sz);
+        mink::CURRENT_DAEMON->log(mink::LLT_DEBUG,
+                                  "JSON RPC malformed = %s", rpc_data.c_str());
         return;
 
     }else{
@@ -124,6 +126,8 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
         // verify if json is a valid json rpc data
         try {
             jrpc.verify(true);
+            mink::CURRENT_DAEMON->log(mink::LLT_DEBUG,
+                                      "JSON RPC received = %s", j.dump().c_str());
             int id = jrpc.get_id();
             // check if method is supported
             if(jrpc.get_method_id() > -1){
@@ -165,11 +169,14 @@ void WsSession::on_read(beast::error_code ec, std::size_t bt){
             }
 
         } catch (std::exception &e) {
-            std::cout << e.what() << std::endl;
             ws_rpl = json_rpc::JsonRpc::gen_err(-1).dump();
             sz = net::buffer_copy(buffer_.prepare(ws_rpl.size()),
                                   net::buffer(ws_rpl));
             send_buff(buffer_, sz);
+            mink::CURRENT_DAEMON->log(mink::LLT_DEBUG,
+                                      "JSON RPC malformed = %s",
+                                       rpc_data.c_str());
+
         }
     }
 }
@@ -484,23 +491,31 @@ void HttpSession::on_read(beast::error_code ec, std::size_t bt){
         std::tuple<std::string, std::string, bool, int> ua;    
         // Header
         if(!auth_hdr.empty()){
-            if (!user_auth_prepare(auth_hdr, 0))
+            if (!user_auth_prepare(auth_hdr, 0)){
+                dd->log(mink::LLT_DEBUG, "Invalid authentication format: [Header]");
                 return do_close();
+            }
 
             // connect with DB
             ua = user_auth(auth_hdr);
-            if (!std::get<2>(ua))
+            if (!std::get<2>(ua)){
+                dd->log(mink::LLT_DEBUG, "Invalid user credentials");
                 return do_close();
+            }
 
         // URL param
         } else if (!req_m.empty()) {
-            if (!user_auth_prepare(req_m, 1))
+            if (!user_auth_prepare(req_m, 1)){
+                dd->log(mink::LLT_DEBUG, "Invalid authentication format: [URL]");
                 return do_close();
+            }
 
             // connect with DB
             ua = user_auth(req_m);
-            if (!std::get<2>(ua))
+            if (!std::get<2>(ua)){
+                dd->log(mink::LLT_DEBUG, "Invalid user credentials");
                 return do_close();
+            }
 
         // unknown
         } else
