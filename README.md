@@ -6,6 +6,7 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=link-mink_mink-core&metric=alert_status)](https://sonarcloud.io/dashboard?id=link-mink_mink-core)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/5232/badge)](https://bestpractices.coreinfrastructure.org/projects/5232)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Flperkov%2Fmink-core.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Flperkov%2Fmink-core?ref=badge_shield)
 
 - Core components
   - [**libgdt**](#gdt-protocol-library) - GDT protocol library      
@@ -510,3 +511,6 @@ This will start **gdttrapc** with the following parameters set:
 ### License
 ----
 This software is licensed under the MIT license
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Flperkov%2Fmink-core.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Flperkov%2Fmink-core?ref=badge_large)
